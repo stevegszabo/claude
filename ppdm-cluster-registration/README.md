@@ -1,4 +1,31 @@
-# PPDM Kubernetes Cluster Registration
+# ppdm-cluster-registration - requirements
+
+Using the vendor documentation as a guide we need you to develop a Python script to register
+a Kubernetes cluster with Dell Power Protect Data Manager (PPDM). Using the vendor REST API
+we need the script to perform the following actions:
+
+1.0) Authenticate with the API to request an access token to be used by consecutive calls
+
+2.0) Main feature: Manage cluster credentials
+2.1) List cluster credential
+2.2) Get cluster credential
+2.3) Create cluster credential
+2.4) Update cluster credential
+2.5) Delete cluster credential
+
+3.0) Main feature: Manage cluster registrations
+3.1) List cluster registration
+3.2) Get cluster registration
+3.3) Create cluster registration
+3.4) Update cluster registration
+3.5) Delete cluster registration
+
+Vendor documentation:
+
+* https://developer.dell.com/apis/4378/versions/20.1.0/make-your-first-call-5959m0
+* https://developer.dell.com/apis/4378/versions/20.1.0/backup-and-restore-kubernetes-5987m0
+
+# ppdm-cluster-registration - results
 
 A Python CLI for registering and managing Kubernetes clusters with Dell
 PowerProtect Data Manager (PPDM) via its public REST API
