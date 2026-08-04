@@ -4,21 +4,19 @@ Using the vendor documentation as a guide we need you to develop a Python script
 a Kubernetes cluster with Dell Power Protect Data Manager (PPDM). Using the vendor REST API
 we need the script to perform the following actions:
 
-1.0) Authenticate with the API to request an access token to be used by consecutive calls
-
-2.0) Main feature: Manage cluster credentials
-2.1) List cluster credential
-2.2) Get cluster credential
-2.3) Create cluster credential
-2.4) Update cluster credential
-2.5) Delete cluster credential
-
-3.0) Main feature: Manage cluster registrations
-3.1) List cluster registration
-3.2) Get cluster registration
-3.3) Create cluster registration
-3.4) Update cluster registration
-3.5) Delete cluster registration
+1. Authenticate with the API to request an access token to be used by consecutive calls
+2. Manage cluster credentials
+   1. List cluster credential
+   2. Get cluster credential
+   3. Create cluster credential
+   4. Update cluster credential
+   5. Delete cluster credential
+3. Manage cluster registrations
+   1. List cluster registration
+   2. Get cluster registration
+   3. Create cluster registration
+   4. Update cluster registration
+   5. Delete cluster registration
 
 Vendor documentation:
 
