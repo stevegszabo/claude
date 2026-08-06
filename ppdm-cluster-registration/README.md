@@ -1,29 +1,4 @@
-# ppdm-cluster-registration - requirements
-
-Using the vendor documentation as a guide we need you to develop a Python script to register
-a Kubernetes cluster with Dell Power Protect Data Manager (PPDM). Using the vendor REST API
-we need the script to perform the following actions:
-
-1. Authenticate with the API to request an access token to be used by consecutive calls
-2. Manage cluster credentials
-   1. List cluster credential
-   2. Get cluster credential
-   3. Create cluster credential
-   4. Update cluster credential
-   5. Delete cluster credential
-3. Manage cluster registrations
-   1. List cluster registration
-   2. Get cluster registration
-   3. Create cluster registration
-   4. Update cluster registration
-   5. Delete cluster registration
-
-Vendor documentation:
-
-* https://developer.dell.com/apis/4378/versions/20.1.0/make-your-first-call-5959m0
-* https://developer.dell.com/apis/4378/versions/20.1.0/backup-and-restore-kubernetes-5987m0
-
-# ppdm-cluster-registration - results
+# PPDM Kubernetes Cluster Registration
 
 A Python CLI for registering and managing Kubernetes clusters with Dell
 PowerProtect Data Manager (PPDM) via its public REST API
@@ -130,8 +105,17 @@ register_cluster.py cluster create --name NAME --address HOST \
 register_cluster.py cluster update --id ID \
     [--credential-id ID | --credential-name NAME] \
     [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...]
-register_cluster.py cluster delete --id ID [--yes]
+register_cluster.py cluster delete --id ID [--yes] [--cleanup]
 ```
+
+**`--cleanup`:** PPDM refuses to delete an inventory source while its assets (namespaces,
+PVCs, etc.) are still assigned to a protection policy or belong to an asset group, failing
+with: *"Failed to delete inventory source due to the assets of the inventory source being
+protected by protection policies or being part of asset groups."* Passing `--cleanup` looks up
+the cluster's assets first and unassigns each one from any protection policy
+(`POST /protection-policies/{id}/asset-unassignments`) and any asset group
+(`POST /resource-groups/{id}/resource-unassignments-batch`) before deleting the registration.
+Omit it if you'd rather manage those unassignments yourself (e.g. via the PPDM UI) first.
 
 `--k8s-port` is the *Kubernetes* API server port (default `6443`) — distinct
 from the top-level `--port`, which is PPDM's own REST API port.

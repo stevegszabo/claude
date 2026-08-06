@@ -92,6 +92,13 @@ def _build_parser():
     clus_delete = cluster_action.add_parser("delete", help="Delete a cluster registration")
     clus_delete.add_argument("--id", required=True)
     clus_delete.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
+    clus_delete.add_argument(
+        "--cleanup", action="store_true",
+        help=(
+            "Before deleting, unassign the cluster's assets from any protection policies "
+            "and asset groups, as PPDM requires."
+        ),
+    )
 
     return parser
 
@@ -177,6 +184,18 @@ def _run_cluster(client, args):
         if not args.yes and not _confirm("Delete cluster registration {}?".format(args.id)):
             print("Aborted.")
             return
+        if args.cleanup:
+            summary = api.cleanup(args.id)
+            print(
+                "Cleaned up {} asset(s): unassigned from {} protection polic{}, "
+                "{} asset group{}.".format(
+                    summary["assets_processed"],
+                    len(summary["protection_policies_unassigned"]),
+                    "y" if len(summary["protection_policies_unassigned"]) == 1 else "ies",
+                    len(summary["asset_groups_unassigned"]),
+                    "" if len(summary["asset_groups_unassigned"]) == 1 else "s",
+                )
+            )
         api.delete(args.id)
         print("Cluster registration {} deleted.".format(args.id))
 
