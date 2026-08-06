@@ -216,6 +216,57 @@ class ClusterCLITests(unittest.TestCase):
         self.assertEqual(method, "DELETE")
         self.assertEqual(url, BASE + "/inventory-sources/k1")
 
+    def test_delete_with_cleanup(self):
+        exit_code, out, calls = run_cli(
+            ["cluster", "delete", "--id", "k1", "--yes", "--cleanup"],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"content": [
+                    {"id": "a1", "protectionPolicyId": "p1", "resourceGroups": [{"id": "g1"}]},
+                ]}),
+                FakeResponse(204, None),
+                FakeResponse(207, {"responses": []}),
+                FakeResponse(204, None),
+                LOGOUT_OK,
+            ],
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Cleaned up 1 asset(s)", out)
+        self.assertIn("deleted", out)
+
+        assets_method, assets_url, assets_kwargs = calls[1]
+        self.assertEqual(assets_method, "GET")
+        self.assertEqual(assets_url, BASE + "/assets")
+        self.assertEqual(assets_kwargs["params"]["filter"], 'kubernetes.inventorySourceId eq "k1"')
+
+        unassign_policy_method, unassign_policy_url, unassign_policy_kwargs = calls[2]
+        self.assertEqual(unassign_policy_method, "POST")
+        self.assertEqual(unassign_policy_url, BASE + "/protection-policies/p1/asset-unassignments")
+        self.assertEqual(unassign_policy_kwargs["json"], ["a1"])
+
+        unassign_group_method, unassign_group_url, unassign_group_kwargs = calls[3]
+        self.assertEqual(unassign_group_method, "POST")
+        self.assertEqual(unassign_group_url, BASE + "/resource-groups/g1/resource-unassignments-batch")
+        self.assertEqual(
+            unassign_group_kwargs["json"],
+            {"requests": [{"id": "a1", "body": {"resourceType": "ASSET", "resourceId": "a1"}}]},
+        )
+
+        delete_method, delete_url, _ = calls[4]
+        self.assertEqual(delete_method, "DELETE")
+        self.assertEqual(delete_url, BASE + "/inventory-sources/k1")
+
+    def test_delete_with_cleanup_no_assets_is_noop(self):
+        exit_code, out, calls = run_cli(
+            ["cluster", "delete", "--id", "k1", "--yes", "--cleanup"],
+            [LOGIN_OK, FakeResponse(200, {"content": []}), FakeResponse(204, None), LOGOUT_OK],
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Cleaned up 0 asset(s)", out)
+        delete_method, delete_url, _ = calls[2]
+        self.assertEqual(delete_method, "DELETE")
+        self.assertEqual(delete_url, BASE + "/inventory-sources/k1")
+
 
 class ErrorHandlingTests(unittest.TestCase):
     def test_api_error_exits_nonzero(self):
