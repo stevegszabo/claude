@@ -125,9 +125,22 @@ class RegistrationsAPI:
         }
 
     def _list_assets(self, id):
-        filt = 'kubernetes.inventorySourceId eq "{}"'.format(id)
-        response = self.client.request("GET", "/assets", params={"filter": filt})
-        return response["content"] if response else []
+        """List the Kubernetes assets (namespaces, PVCs) belonging to this
+        cluster.
+
+        PPDM's filter language doesn't support filtering on the nested
+        `details.k8s.inventorySourceId` field, so this filters server-side
+        on the top-level `type` field only, then matches the cluster
+        client-side.
+        """
+        response = self.client.request(
+            "GET", "/assets", params={"filter": 'type eq "{}"'.format(self.RESOURCE_TYPE)}
+        )
+        assets = response["content"] if response else []
+        return [
+            asset for asset in assets
+            if (asset.get("details") or {}).get("k8s", {}).get("inventorySourceId") == id
+        ]
 
     def resolve_id(self, name=None, id=None):
         if id:
