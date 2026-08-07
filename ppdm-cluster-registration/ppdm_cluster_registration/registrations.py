@@ -30,7 +30,7 @@ class RegistrationsAPI:
         return self.client.request("GET", "/inventory-sources/{}".format(id))
 
     def create(self, name, address, credential_id, port=6443,
-               distribution_type=None, update_mode=None):
+               distribution_type=None, update_mode=None, configurations=None):
         payload = {
             "name": name,
             "type": self.RESOURCE_TYPE,
@@ -43,6 +43,8 @@ class RegistrationsAPI:
             k8s_details["distributionType"] = distribution_type
         if update_mode is not None:
             k8s_details["updateMode"] = update_mode
+        if configurations is not None:
+            k8s_details["configurations"] = configurations
         if k8s_details:
             payload["details"] = {"k8s": k8s_details}
         return self.client.request("POST", "/inventory-sources", json=payload)

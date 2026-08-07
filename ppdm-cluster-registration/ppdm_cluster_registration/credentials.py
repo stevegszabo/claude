@@ -46,6 +46,7 @@ class CredentialsAPI:
         """
         current = self.get(id)
         payload = {
+            "id": id,
             "name": name if name is not None else current.get("name"),
             "username": username if username is not None else current.get("username"),
             "type": current.get("type", self.RESOURCE_TYPE),

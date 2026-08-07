@@ -78,6 +78,10 @@ def _build_parser():
         "--distribution-type", choices=["TANZU_GUEST_CLUSTER", "VANILLA_ON_VSPHERE", "NON_VSPHERE"],
     )
     clus_create.add_argument("--update-mode", choices=["AUTO", "MANUAL"])
+    clus_create.add_argument(
+        "--config", action="append", metavar="KEY=VALUE",
+        help="Set a controller configuration entry (repeatable)",
+    )
 
     clus_update = cluster_action.add_parser("update", help="Update a cluster registration")
     clus_update.add_argument("--id", required=True)
@@ -86,7 +90,7 @@ def _build_parser():
     clus_update.add_argument("--update-mode", choices=["AUTO", "MANUAL"])
     clus_update.add_argument(
         "--config", action="append", metavar="KEY=VALUE",
-        help="Set a pod configuration entry (repeatable)",
+        help="Set a controller configuration entry (repeatable)",
     )
 
     clus_delete = cluster_action.add_parser("delete", help="Delete a cluster registration")
@@ -130,7 +134,7 @@ def _parse_configs(config_args):
         if "=" not in item:
             raise ValueError("--config must be in KEY=VALUE form, got: {}".format(item))
         key, value = item.split("=", 1)
-        configurations.append({"type": "POD_CONFIG", "key": key, "value": value})
+        configurations.append({"type": "CONTROLLER_CONFIG", "key": key, "value": value})
     return configurations
 
 
@@ -168,6 +172,7 @@ def _run_cluster(client, args):
             port=args.k8s_port,
             distribution_type=args.distribution_type,
             update_mode=args.update_mode,
+            configurations=_parse_configs(args.config),
         ))
     elif args.action == "update":
         credential_id = args.credential_id

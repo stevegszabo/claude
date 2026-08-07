@@ -124,6 +124,7 @@ class CredentialCLITests(unittest.TestCase):
         self.assertEqual(put_url, BASE + "/credentials/c1")
         self.assertEqual(put_kwargs["json"]["password"], "new-token")
         self.assertEqual(put_kwargs["json"]["name"], "prod-cred")
+        self.assertEqual(put_kwargs["json"]["id"], "c1")
 
     def test_delete(self):
         exit_code, out, calls = run_cli(
@@ -194,6 +195,24 @@ class ClusterCLITests(unittest.TestCase):
         create_method, create_url, create_kwargs = calls[2]
         self.assertEqual(create_kwargs["json"]["credentials"], {"id": "c1"})
 
+    def test_create_with_config(self):
+        exit_code, out, calls = run_cli(
+            ["cluster", "create", "--name", "my-cluster", "--address", "10.0.0.5",
+             "--credential-id", "c1", "--config", "env=prod", "--config", "tier=1"],
+            [LOGIN_OK, FakeResponse(201, {"id": "k1", "name": "my-cluster"}), LOGOUT_OK],
+        )
+        self.assertEqual(exit_code, 0)
+        method, url, kwargs = calls[1]
+        self.assertEqual(method, "POST")
+        self.assertEqual(url, BASE + "/inventory-sources")
+        self.assertEqual(
+            kwargs["json"]["details"]["k8s"]["configurations"],
+            [
+                {"type": "CONTROLLER_CONFIG", "key": "env", "value": "prod"},
+                {"type": "CONTROLLER_CONFIG", "key": "tier", "value": "1"},
+            ],
+        )
+
     def test_update(self):
         exit_code, out, calls = run_cli(
             ["cluster", "update", "--id", "k1", "--update-mode", "MANUAL"],
@@ -204,6 +223,20 @@ class ClusterCLITests(unittest.TestCase):
         self.assertEqual(method, "PATCH")
         self.assertEqual(url, BASE + "/inventory-sources/k1")
         self.assertEqual(kwargs["json"]["details"]["k8s"]["updateMode"], "MANUAL")
+
+    def test_update_with_config(self):
+        exit_code, out, calls = run_cli(
+            ["cluster", "update", "--id", "k1", "--config", "env=prod"],
+            [LOGIN_OK, FakeResponse(200, {"id": "k1", "name": "my-cluster"}), LOGOUT_OK],
+        )
+        self.assertEqual(exit_code, 0)
+        method, url, kwargs = calls[1]
+        self.assertEqual(method, "PATCH")
+        self.assertEqual(url, BASE + "/inventory-sources/k1")
+        self.assertEqual(
+            kwargs["json"]["details"]["k8s"]["configurations"],
+            [{"type": "CONTROLLER_CONFIG", "key": "env", "value": "prod"}],
+        )
 
     def test_delete(self):
         exit_code, out, calls = run_cli(
