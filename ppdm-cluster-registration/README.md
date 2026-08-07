@@ -101,7 +101,7 @@ register_cluster.py cluster get --id ID
 register_cluster.py cluster create --name NAME --address HOST \
     [--k8s-port PORT] (--credential-id ID | --credential-name NAME) \
     [--distribution-type TANZU_GUEST_CLUSTER|VANILLA_ON_VSPHERE|NON_VSPHERE] \
-    [--update-mode AUTO|MANUAL]
+    [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...]
 register_cluster.py cluster update --id ID \
     [--credential-id ID | --credential-name NAME] \
     [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...]
@@ -122,7 +122,7 @@ from the top-level `--port`, which is PPDM's own REST API port.
 
 **Note on `update`:** PPDM's `/inventory-sources/{id}` endpoint has no
 full-replace `PUT` — only `PATCH`, scoped to the cluster's `details.k8s`
-object (pod configuration entries, update mode) plus, defensively, the
+object (controller configuration entries, update mode) plus, defensively, the
 credential reference. If your PPDM version doesn't honor a credential change
 via this endpoint, delete and recreate the registration with the new
 credential instead.
