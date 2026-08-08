@@ -84,14 +84,26 @@ Global options (apply before the resource subcommand):
 ```bash
 register_cluster.py credential list [--name SUBSTR] [--id SUBSTR]
 register_cluster.py credential get --id ID
-register_cluster.py credential create --name NAME --token TOKEN [--username USER]
+register_cluster.py credential create --name NAME [--token TOKEN] [--username USER] [--skip-if-exists]
 register_cluster.py credential update --id ID [--name NAME] [--token TOKEN] [--username USER]
 register_cluster.py credential delete --id ID [--yes]
 ```
 
+`create --token` follows the same fallback order as `--password`: the flag,
+then the `PPDM_TOKEN` environment variable, then an interactive prompt (via
+`getpass`, not echoed) if neither is set. `update --token` has no such
+fallback — it's optional, and omitting it means "leave the token
+unchanged," so a rotation must be requested explicitly.
+
 `update` fetches the current credential and merges in only the fields you
 pass, then submits a full replacement (PPDM's `/credentials/{id}` only
 supports `PUT`, not `PATCH`).
+
+**`--skip-if-exists`:** PPDM's create call fails if a credential with that name
+already exists. Passing `--skip-if-exists` looks up the name first (exact match)
+and, if found, prints a short message and exits successfully without attempting
+the create (and without resolving/prompting for a token) — useful for re-running
+a create from a script/pipeline idempotently.
 
 ### `cluster` — manage cluster registrations
 
@@ -101,7 +113,7 @@ register_cluster.py cluster get --id ID
 register_cluster.py cluster create --name NAME --address HOST \
     [--k8s-port PORT] (--credential-id ID | --credential-name NAME) \
     [--distribution-type TANZU_GUEST_CLUSTER|VANILLA_ON_VSPHERE|NON_VSPHERE] \
-    [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...]
+    [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...] [--skip-if-exists]
 register_cluster.py cluster update --id ID \
     [--credential-id ID | --credential-name NAME] \
     [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...]
@@ -119,6 +131,11 @@ Omit it if you'd rather manage those unassignments yourself (e.g. via the PPDM U
 
 `--k8s-port` is the *Kubernetes* API server port (default `6443`) — distinct
 from the top-level `--port`, which is PPDM's own REST API port.
+
+**`--skip-if-exists`:** PPDM's create call fails if a registration with that name
+already exists. Passing `--skip-if-exists` looks up the name first (exact match)
+and, if found, prints a short message and exits successfully without attempting
+the create — useful for re-running a create from a script/pipeline idempotently.
 
 **Note on `update`:** PPDM's `/inventory-sources/{id}` endpoint has no
 full-replace `PUT` — only `PATCH`, scoped to the cluster's `details.k8s`
@@ -159,7 +176,9 @@ ppdm_cluster_registration/
 ├── credentials.py      CredentialsAPI: cluster credential CRUD
 ├── registrations.py    RegistrationsAPI: cluster registration CRUD
 ├── cli.py               argparse CLI wiring
-└── exceptions.py        PPDMAPIError
+├── exceptions.py        PPDMAPIError
+├── filters.py            shared PPDM filter-expression builder
+└── resolve.py            shared name/ID resolution helper
 register_cluster.py       entry point
 tests/test_cli_smoke.py    mocked-HTTP smoke tests
 ```

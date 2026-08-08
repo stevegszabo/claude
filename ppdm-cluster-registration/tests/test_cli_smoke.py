@@ -7,6 +7,7 @@ method, URL, and JSON body sent for every call PPDM would receive.
 """
 import contextlib
 import io
+import os
 import unittest
 from unittest import mock
 
@@ -104,6 +105,50 @@ class CredentialCLITests(unittest.TestCase):
         self.assertEqual(body["password"], "sa-token-123")
         self.assertEqual(body["type"], "KUBERNETES")
         self.assertEqual(body["method"], "TOKEN")
+
+    def test_create_token_falls_back_to_env_var(self):
+        with mock.patch.dict(os.environ, {"PPDM_TOKEN": "env-token"}):
+            exit_code, out, calls = run_cli(
+                ["credential", "create", "--name", "prod-cred"],
+                [LOGIN_OK, FakeResponse(201, {"id": "c1", "name": "prod-cred"}), LOGOUT_OK],
+            )
+        self.assertEqual(exit_code, 0)
+        method, url, kwargs = calls[1]
+        self.assertEqual(kwargs["json"]["password"], "env-token")
+
+    def test_create_skip_if_exists_when_present(self):
+        exit_code, out, calls = run_cli(
+            ["credential", "create", "--name", "prod-cred", "--token", "sa-token-123",
+             "--skip-if-exists"],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"content": [{"id": "c1", "name": "prod-cred"}]}),
+                LOGOUT_OK,
+            ],
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("already exists, skipping", out)
+        self.assertEqual(len(calls), 3)
+        list_method, list_url, _ = calls[1]
+        self.assertEqual((list_method, list_url), ("GET", BASE + "/credentials"))
+
+    def test_create_skip_if_exists_when_absent(self):
+        exit_code, out, calls = run_cli(
+            ["credential", "create", "--name", "prod-cred", "--token", "sa-token-123",
+             "--skip-if-exists"],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"content": [{"id": "c2", "name": "other-cred"}]}),
+                FakeResponse(201, {"id": "c1", "name": "prod-cred"}),
+                LOGOUT_OK,
+            ],
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertNotIn("already exists", out)
+        create_method, create_url, create_kwargs = calls[2]
+        self.assertEqual(create_method, "POST")
+        self.assertEqual(create_url, BASE + "/credentials")
+        self.assertEqual(create_kwargs["json"]["name"], "prod-cred")
 
     def test_update(self):
         exit_code, out, calls = run_cli(
@@ -213,6 +258,40 @@ class ClusterCLITests(unittest.TestCase):
             ],
         )
 
+    def test_create_skip_if_exists_when_present(self):
+        exit_code, out, calls = run_cli(
+            ["cluster", "create", "--name", "my-cluster", "--address", "10.0.0.5",
+             "--credential-id", "c1", "--skip-if-exists"],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"content": [{"id": "k1", "name": "my-cluster"}]}),
+                LOGOUT_OK,
+            ],
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("already exists, skipping", out)
+        self.assertEqual(len(calls), 3)
+        list_method, list_url, _ = calls[1]
+        self.assertEqual((list_method, list_url), ("GET", BASE + "/inventory-sources"))
+
+    def test_create_skip_if_exists_when_absent(self):
+        exit_code, out, calls = run_cli(
+            ["cluster", "create", "--name", "my-cluster", "--address", "10.0.0.5",
+             "--credential-id", "c1", "--skip-if-exists"],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"content": [{"id": "k2", "name": "other-cluster"}]}),
+                FakeResponse(201, {"id": "k1", "name": "my-cluster"}),
+                LOGOUT_OK,
+            ],
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertNotIn("already exists", out)
+        create_method, create_url, create_kwargs = calls[2]
+        self.assertEqual(create_method, "POST")
+        self.assertEqual(create_url, BASE + "/inventory-sources")
+        self.assertEqual(create_kwargs["json"]["name"], "my-cluster")
+
     def test_update(self):
         exit_code, out, calls = run_cli(
             ["cluster", "update", "--id", "k1", "--update-mode", "MANUAL"],
@@ -237,6 +316,18 @@ class ClusterCLITests(unittest.TestCase):
             kwargs["json"]["details"]["k8s"]["configurations"],
             [{"type": "CONTROLLER_CONFIG", "key": "env", "value": "prod"}],
         )
+
+    def test_update_credential_id_and_name_mutually_exclusive(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "--server", "ppdm.example.com", "--user", "admin", "--password", "sekret",
+                    "cluster", "update", "--id", "k1",
+                    "--credential-id", "c1", "--credential-name", "prod-cred",
+                ])
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("not allowed with argument", stderr.getvalue())
 
     def test_delete(self):
         exit_code, out, calls = run_cli(

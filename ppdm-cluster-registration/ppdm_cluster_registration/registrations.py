@@ -1,10 +1,5 @@
-def _build_filter(base_filter, name=None, id=None):
-    clauses = [base_filter] if base_filter else []
-    if id:
-        clauses.append('id lk "%{}%"'.format(id))
-    if name:
-        clauses.append('name lk "%{}%"'.format(name))
-    return " and ".join(clauses) if clauses else None
+from .filters import build_filter
+from .resolve import resolve_id as _resolve_id
 
 
 class RegistrationsAPI:
@@ -18,19 +13,27 @@ class RegistrationsAPI:
     RESOURCE_TYPE = "KUBERNETES"
 
     def __init__(self, client):
+        """Wrap an authenticated PPDMClient for cluster registration
+        operations.
+        """
         self.client = client
 
     def list(self, name=None, id=None):
-        filt = _build_filter('type eq "{}"'.format(self.RESOURCE_TYPE), name=name, id=id)
+        """List KUBERNETES cluster registrations, optionally filtered by
+        substring match on name and/or id.
+        """
+        filt = build_filter('type eq "{}"'.format(self.RESOURCE_TYPE), name=name, id=id)
         params = {"filter": filt} if filt else None
         response = self.client.request("GET", "/inventory-sources", params=params)
         return response["content"] if response else []
 
     def get(self, id):
+        """Fetch a single cluster registration by ID."""
         return self.client.request("GET", "/inventory-sources/{}".format(id))
 
     def create(self, name, address, credential_id, port=6443,
                distribution_type=None, update_mode=None, configurations=None):
+        """Register a new Kubernetes cluster with PPDM."""
         payload = {
             "name": name,
             "type": self.RESOURCE_TYPE,
@@ -75,6 +78,7 @@ class RegistrationsAPI:
         return self.client.request("PATCH", "/inventory-sources/{}".format(id), json=payload)
 
     def delete(self, id):
+        """Delete a cluster registration by ID."""
         return self.client.request("DELETE", "/inventory-sources/{}".format(id))
 
     def cleanup(self, id):
@@ -145,17 +149,8 @@ class RegistrationsAPI:
         ]
 
     def resolve_id(self, name=None, id=None):
-        if id:
-            return id
-        if not name:
-            raise ValueError("Either id or name must be provided")
-        matches = self.list(name=name)
-        if len(matches) == 0:
-            raise ValueError("No cluster registration found matching name: {}".format(name))
-        if len(matches) > 1:
-            raise ValueError(
-                "Cluster name '{}' matched {} results; use --id instead".format(
-                    name, len(matches)
-                )
-            )
-        return matches[0]["id"]
+        """Resolve a cluster registration ID from either an explicit ID or
+        a name lookup. Raises ValueError if the name does not resolve to
+        exactly one registration.
+        """
+        return _resolve_id(self.list, "cluster registration", "--id", name=name, id=id)

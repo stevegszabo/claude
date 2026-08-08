@@ -41,8 +41,19 @@ def _build_parser():
 
     cred_create = credential_action.add_parser("create", help="Create a credential")
     cred_create.add_argument("--name", required=True)
-    cred_create.add_argument("--token", required=True, help="Kubernetes service-account token")
+    cred_create.add_argument(
+        "--token", default=None,
+        help="Kubernetes service-account token. Falls back to the PPDM_TOKEN env var, then an interactive prompt.",
+    )
     cred_create.add_argument("--username", default="null")
+    cred_create.add_argument(
+        "--skip-if-exists", action="store_true", dest="skip_if_exists",
+        help=(
+            "Check whether a credential with this exact name already exists "
+            "before creating; if so, skip (no-op) instead of letting PPDM's "
+            "create call fail."
+        ),
+    )
 
     cred_update = credential_action.add_parser("update", help="Update a credential")
     cred_update.add_argument("--id", required=True)
@@ -82,11 +93,20 @@ def _build_parser():
         "--config", action="append", metavar="KEY=VALUE",
         help="Set a controller configuration entry (repeatable)",
     )
+    clus_create.add_argument(
+        "--skip-if-exists", action="store_true", dest="skip_if_exists",
+        help=(
+            "Check whether a cluster registration with this exact name already "
+            "exists before creating; if so, skip (no-op) instead of letting "
+            "PPDM's create call fail."
+        ),
+    )
 
     clus_update = cluster_action.add_parser("update", help="Update a cluster registration")
     clus_update.add_argument("--id", required=True)
-    clus_update.add_argument("--credential-id")
-    clus_update.add_argument("--credential-name")
+    cred_group = clus_update.add_mutually_exclusive_group()
+    cred_group.add_argument("--credential-id", help="ID of an existing KUBERNETES credential")
+    cred_group.add_argument("--credential-name", help="Name of an existing KUBERNETES credential")
     clus_update.add_argument("--update-mode", choices=["AUTO", "MANUAL"])
     clus_update.add_argument(
         "--config", action="append", metavar="KEY=VALUE",
@@ -108,12 +128,33 @@ def _build_parser():
 
 
 def _resolve_password(args):
+    """Resolve the PPDM password, checked in this order: the --password
+    flag, then the PPDM_PASSWORD env var, then an interactive (unechoed)
+    prompt. Required for every command, unlike _resolve_token.
+    """
     if args.password:
         return args.password
     env_password = os.environ.get("PPDM_PASSWORD")
     if env_password:
         return env_password
     return getpass.getpass("PPDM password for {}@{}: ".format(args.user, args.server))
+
+
+def _resolve_token(args):
+    """Resolve the Kubernetes service-account token for `credential create`,
+    checked in the same order as _resolve_password: flag, then PPDM_TOKEN
+    env var, then an interactive (unechoed) prompt.
+
+    Not used for `credential update`, where --token is optional and
+    omitting it means "leave the token unchanged" -- a fallback there would
+    incorrectly prompt for/consume a token on updates that aren't rotating it.
+    """
+    if args.token:
+        return args.token
+    env_token = os.environ.get("PPDM_TOKEN")
+    if env_token:
+        return env_token
+    return getpass.getpass("Kubernetes service-account token: ")
 
 
 def _confirm(prompt):
@@ -139,13 +180,21 @@ def _parse_configs(config_args):
 
 
 def _run_credential(client, args):
+    """Dispatch a `credential` subcommand (list/get/create/update/delete)
+    to the matching CredentialsAPI call and print the result.
+    """
     api = CredentialsAPI(client)
     if args.action == "list":
         _print(api.list(name=args.name, id=args.id))
     elif args.action == "get":
         _print(api.get(args.id))
     elif args.action == "create":
-        _print(api.create(name=args.name, token=args.token, username=args.username))
+        if args.skip_if_exists:
+            existing = [c for c in api.list(name=args.name) if c.get("name") == args.name]
+            if existing:
+                print("Credential '{}' already exists, skipping.".format(args.name))
+                return
+        _print(api.create(name=args.name, token=_resolve_token(args), username=args.username))
     elif args.action == "update":
         _print(api.update(args.id, name=args.name, token=args.token, username=args.username))
     elif args.action == "delete":
@@ -157,12 +206,22 @@ def _run_credential(client, args):
 
 
 def _run_cluster(client, args):
+    """Dispatch a `cluster` subcommand (list/get/create/update/delete) to
+    the matching RegistrationsAPI call and print the result. For
+    create/update, resolves --credential-name to an ID via CredentialsAPI
+    first, since RegistrationsAPI itself only accepts a credential ID.
+    """
     api = RegistrationsAPI(client)
     if args.action == "list":
         _print(api.list(name=args.name, id=args.id))
     elif args.action == "get":
         _print(api.get(args.id))
     elif args.action == "create":
+        if args.skip_if_exists:
+            existing = [c for c in api.list(name=args.name) if c.get("name") == args.name]
+            if existing:
+                print("Cluster registration '{}' already exists, skipping.".format(args.name))
+                return
         credentials_api = CredentialsAPI(client)
         credential_id = credentials_api.resolve_id(name=args.credential_name, id=args.credential_id)
         _print(api.create(

@@ -1,10 +1,5 @@
-def _build_filter(base_filter, name=None, id=None):
-    clauses = [base_filter] if base_filter else []
-    if id:
-        clauses.append('id lk "%{}%"'.format(id))
-    if name:
-        clauses.append('name lk "%{}%"'.format(name))
-    return " and ".join(clauses) if clauses else None
+from .filters import build_filter
+from .resolve import resolve_id as _resolve_id
 
 
 class CredentialsAPI:
@@ -17,18 +12,29 @@ class CredentialsAPI:
     RESOURCE_TYPE = "KUBERNETES"
 
     def __init__(self, client):
+        """Wrap an authenticated PPDMClient for credential operations."""
         self.client = client
 
     def list(self, name=None, id=None):
-        filt = _build_filter('type eq "{}"'.format(self.RESOURCE_TYPE), name=name, id=id)
+        """List KUBERNETES credentials, optionally filtered by substring
+        match on name and/or id.
+        """
+        filt = build_filter('type eq "{}"'.format(self.RESOURCE_TYPE), name=name, id=id)
         params = {"filter": filt} if filt else None
         response = self.client.request("GET", "/credentials", params=params)
         return response["content"] if response else []
 
     def get(self, id):
+        """Fetch a single credential by ID."""
         return self.client.request("GET", "/credentials/{}".format(id))
 
     def create(self, name, token, username="null"):
+        """Create a credential. `username` defaults to the literal string
+        "null": Kubernetes TOKEN credentials have no meaningful username,
+        but PPDM's schema requires the field non-empty. This matches Dell's
+        own convention (see credsmgmt.py in
+        github.com/dell/powerprotect-data-manager), not a bug.
+        """
         payload = {
             "name": name,
             "username": username,
@@ -58,6 +64,7 @@ class CredentialsAPI:
         return self.client.request("PUT", "/credentials/{}".format(id), json=payload)
 
     def delete(self, id):
+        """Delete a credential by ID."""
         return self.client.request("DELETE", "/credentials/{}".format(id))
 
     def resolve_id(self, name=None, id=None):
@@ -65,17 +72,4 @@ class CredentialsAPI:
         lookup. Raises ValueError if the name does not resolve to exactly
         one credential.
         """
-        if id:
-            return id
-        if not name:
-            raise ValueError("Either id or name must be provided")
-        matches = self.list(name=name)
-        if len(matches) == 0:
-            raise ValueError("No credential found matching name: {}".format(name))
-        if len(matches) > 1:
-            raise ValueError(
-                "Credential name '{}' matched {} results; use --credential-id instead".format(
-                    name, len(matches)
-                )
-            )
-        return matches[0]["id"]
+        return _resolve_id(self.list, "credential", "--credential-id", name=name, id=id)

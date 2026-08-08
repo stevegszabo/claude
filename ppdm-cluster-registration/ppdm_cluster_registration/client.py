@@ -16,6 +16,9 @@ class PPDMClient:
     """
 
     def __init__(self, server, username, password, port=8443, verify_ssl=True, timeout=90):
+        """Store connection parameters. No network call happens until
+        login() (or entering the context manager).
+        """
         self.server = server
         self.username = username
         self.password = password
@@ -34,21 +37,33 @@ class PPDMClient:
             )
 
     def __enter__(self):
+        """Log in and return self, enabling the `with PPDMClient(...) as
+        client:` pattern shown in the class docstring.
+        """
         self.login()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """Log out if a session was established. Returns False (never
+        suppresses an exception raised inside the `with` block).
+        """
         if self.access_token:
             self.logout()
         return False
 
     def login(self):
+        """Authenticate against PPDM and store the returned access token
+        for use by subsequent authenticated requests.
+        """
         payload = {"username": self.username, "password": self.password}
         response = self._send("POST", "/login", json=payload, authenticated=False)
         self.access_token = response["access_token"]
         return self.access_token
 
     def logout(self):
+        """Invalidate the current session with PPDM and clear the stored
+        access token, even if the logout call itself fails.
+        """
         try:
             self._send("POST", "/logout")
         finally:
@@ -63,6 +78,10 @@ class PPDMClient:
         return self._send(method, path, json=json, params=params)
 
     def _send(self, method, path, json=None, params=None, authenticated=True):
+        """Send a single HTTP request to PPDM and return the parsed JSON
+        body (or None for an empty response). Raises PPDMAPIError on a
+        network failure or a non-2xx response.
+        """
         url = self.base_url + path
         headers = {"Content-Type": "application/json"}
         if authenticated:
