@@ -6,7 +6,7 @@ PowerProtect Data Manager (PPDM) via its public REST API
 
 ## What is PPDM?
 
-[PowerProtect Data Manager](https://www.dell.com/en-us/shop/data-protection/powerprotect-data-manager/spd/powerprotect-data-manager)
+[PowerProtect Data Manager](https://www.dell.com/en-us/shop/storage-servers-and-networking-for-business/sf/powerprotect-data-manager)
 is Dell's enterprise data protection platform. It provides centralized backup,
 recovery, and data-protection governance across an organization's workloads —
 virtual machines, physical/file systems, databases, and (via the Kubernetes
