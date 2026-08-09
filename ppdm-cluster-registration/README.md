@@ -159,14 +159,18 @@ python -m py_compile ppdm_cluster_registration/*.py register_cluster.py
 python -m unittest discover -s tests -v
 ```
 
-The test suite (`tests/test_cli_smoke.py`) mocks `requests.request` (stdlib
-`unittest.mock`, no extra dependency) to exercise every credential and
-cluster operation end-to-end through the CLI without needing a real PPDM
-appliance — it asserts the exact HTTP method, URL, and JSON body sent for
-each call. **It has not been run against a live PPDM appliance**; do that
-before relying on this in production, particularly to confirm your PPDM
-version's exact behavior for `cluster update` credential rotation (see note
-above).
+`tests/test_cli_smoke.py` mocks `requests.request` (stdlib `unittest.mock`,
+no extra dependency) to exercise every credential and cluster operation
+end-to-end through the CLI without needing a real PPDM appliance — it asserts
+the exact HTTP method, URL, and JSON body sent for each call.
+`tests/test_credentials_api.py` and `tests/test_registrations_api.py` instead
+test `CredentialsAPI`/`RegistrationsAPI` directly against a mocked
+`PPDMClient`, independent of the CLI layer — covering filter/payload
+construction, `resolve_id` matching, and `cleanup()`'s per-policy/per-group
+unassignment batching. **None of this has been run against a live PPDM
+appliance**; do that before relying on this in production, particularly to
+confirm your PPDM version's exact behavior for `cluster update` credential
+rotation (see note above).
 
 ## Project layout
 
@@ -180,7 +184,9 @@ ppdm_cluster_registration/
 ├── filters.py            shared PPDM filter-expression builder
 └── resolve.py            shared name/ID resolution helper
 register_cluster.py       entry point
-tests/test_cli_smoke.py    mocked-HTTP smoke tests
+tests/test_cli_smoke.py           mocked-HTTP smoke tests (CLI end-to-end)
+tests/test_credentials_api.py     direct CredentialsAPI unit tests
+tests/test_registrations_api.py   direct RegistrationsAPI unit tests
 ```
 
 ## Reference
