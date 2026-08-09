@@ -18,6 +18,10 @@ class PPDMClient:
     def __init__(self, server, username, password, port=8443, verify_ssl=True, timeout=90):
         """Store connection parameters. No network call happens until
         login() (or entering the context manager).
+
+        If verify_ssl is False, also disables urllib3's InsecureRequestWarning
+        to avoid noisy spam when the caller has explicitly opted out of
+        certificate verification (e.g. a lab appliance with a self-signed cert).
         """
         self.server = server
         self.username = username
@@ -29,9 +33,6 @@ class PPDMClient:
         self.access_token = None
 
         if not verify_ssl:
-            # Avoid noisy InsecureRequestWarning spam when the caller has
-            # explicitly opted out of certificate verification (e.g. a lab
-            # appliance with a self-signed cert).
             requests.packages.urllib3.disable_warnings(
                 requests.packages.urllib3.exceptions.InsecureRequestWarning
             )
