@@ -346,14 +346,7 @@ class ClusterCLITests(unittest.TestCase):
             [
                 LOGIN_OK,
                 FakeResponse(200, {"content": [
-                    {
-                        "id": "a1", "protectionPolicyId": "p1", "resourceGroups": [{"id": "g1"}],
-                        "details": {"k8s": {"inventorySourceId": "k1"}},
-                    },
-                    {
-                        "id": "a2", "protectionPolicyId": "p2",
-                        "details": {"k8s": {"inventorySourceId": "other-cluster"}},
-                    },
+                    {"id": "a1", "protectionPolicyId": "p1", "resourceGroups": [{"id": "g1"}]},
                 ]}),
                 FakeResponse(204, None),
                 FakeResponse(207, {"responses": []}),
@@ -368,7 +361,10 @@ class ClusterCLITests(unittest.TestCase):
         assets_method, assets_url, assets_kwargs = calls[1]
         self.assertEqual(assets_method, "GET")
         self.assertEqual(assets_url, BASE + "/assets")
-        self.assertEqual(assets_kwargs["params"]["filter"], 'type eq "KUBERNETES"')
+        self.assertEqual(
+            assets_kwargs["params"]["filter"],
+            'type eq "KUBERNETES" and inventorySourceRefs.id eq "k1"',
+        )
 
         unassign_policy_method, unassign_policy_url, unassign_policy_kwargs = calls[2]
         self.assertEqual(unassign_policy_method, "POST")

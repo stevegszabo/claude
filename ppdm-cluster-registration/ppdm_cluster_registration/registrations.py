@@ -134,19 +134,16 @@ class RegistrationsAPI:
         """List the Kubernetes assets (namespaces, PVCs) belonging to this
         cluster.
 
-        PPDM's filter language doesn't support filtering on the nested
-        `details.k8s.inventorySourceId` field, so this filters server-side
-        on the top-level `type` field only, then matches the cluster
-        client-side.
+        Filters server-side on both `type` and `inventorySourceRefs.id` --
+        the latter is a top-level array-of-refs field PPDM's filter language
+        does support, unlike the deeply nested `details.k8s.inventorySourceId`
+        (confirmed against Dell's own reference automation,
+        ppdm_k8s_reporting.py in github.com/dell/powerprotect-data-manager,
+        which filters /assets by cluster the same way).
         """
-        response = self.client.request(
-            "GET", "/assets", params={"filter": 'type eq "{}"'.format(self.RESOURCE_TYPE)}
-        )
-        assets = response["content"] if response else []
-        return [
-            asset for asset in assets
-            if (asset.get("details") or {}).get("k8s", {}).get("inventorySourceId") == id
-        ]
+        filt = 'type eq "{}" and inventorySourceRefs.id eq "{}"'.format(self.RESOURCE_TYPE, id)
+        response = self.client.request("GET", "/assets", params={"filter": filt})
+        return response["content"] if response else []
 
     def resolve_id(self, name=None, id=None):
         """Resolve a cluster registration ID from either an explicit ID or
