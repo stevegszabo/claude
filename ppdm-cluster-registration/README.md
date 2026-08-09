@@ -4,6 +4,36 @@ A Python CLI for registering and managing Kubernetes clusters with Dell
 PowerProtect Data Manager (PPDM) via its public REST API
 (`https://developer.dell.com/apis/4378`).
 
+## What is PPDM?
+
+[PowerProtect Data Manager](https://www.dell.com/en-us/shop/data-protection/powerprotect-data-manager/spd/powerprotect-data-manager)
+is Dell's enterprise data protection platform. It provides centralized backup,
+recovery, and data-protection governance across an organization's workloads —
+virtual machines, physical/file systems, databases, and (via the Kubernetes
+inventory source this tool targets) containerized applications — from a single
+console and API.
+
+Concretely, PPDM:
+
+- **Discovers and inventories protectable assets.** Before anything can be
+  backed up, its source must be *registered* with PPDM as an inventory
+  source (for Kubernetes, this means pointing PPDM at a cluster's API server
+  and giving it credentials to talk to it — exactly what this tool automates).
+  PPDM then discovers the individual protectable assets within that source
+  (e.g. Kubernetes namespaces and their PVCs).
+- **Applies protection policies.** Administrators define policies (schedule,
+  retention, backup target) and assign discovered assets to them, either
+  manually or automatically as new assets appear.
+- **Executes and tracks backup/restore jobs.** PPDM orchestrates the actual
+  backup and restore operations against its storage targets (e.g. Dell Data
+  Domain, cloud object storage) and reports job status, compliance, and
+  capacity through its UI and API.
+
+This tool operates entirely on the *registration* side of that lifecycle —
+creating the credential and inventory-source records PPDM needs before it can
+discover and protect anything in a cluster — not on policies, jobs, or backup
+data itself.
+
 It covers:
 
 1. **Authentication** — login/logout against `/api/v2/login` and `/api/v2/logout`,
