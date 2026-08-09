@@ -174,20 +174,19 @@ rotation (see note above).
 
 ## Project layout
 
-```
-ppdm_cluster_registration/
-├── client.py          PPDMClient: login/logout, generic authenticated request
-├── credentials.py      CredentialsAPI: cluster credential CRUD
-├── registrations.py    RegistrationsAPI: cluster registration CRUD
-├── cli.py               argparse CLI wiring
-├── exceptions.py        PPDMAPIError
-├── filters.py            shared PPDM filter-expression builder
-└── resolve.py            shared name/ID resolution helper
-register_cluster.py       entry point
-tests/test_cli_smoke.py           mocked-HTTP smoke tests (CLI end-to-end)
-tests/test_credentials_api.py     direct CredentialsAPI unit tests
-tests/test_registrations_api.py   direct RegistrationsAPI unit tests
-```
+| Path | Description |
+|---|---|
+| `ppdm_cluster_registration/client.py` | `PPDMClient`: login/logout, generic authenticated request |
+| `ppdm_cluster_registration/credentials.py` | `CredentialsAPI`: cluster credential CRUD |
+| `ppdm_cluster_registration/registrations.py` | `RegistrationsAPI`: cluster registration CRUD |
+| `ppdm_cluster_registration/cli.py` | argparse CLI wiring |
+| `ppdm_cluster_registration/exceptions.py` | `PPDMAPIError` |
+| `ppdm_cluster_registration/filters.py` | shared PPDM filter-expression builder |
+| `ppdm_cluster_registration/resolve.py` | shared name/ID resolution helper |
+| `register_cluster.py` | entry point |
+| `tests/test_cli_smoke.py` | mocked-HTTP smoke tests (CLI end-to-end) |
+| `tests/test_credentials_api.py` | direct `CredentialsAPI` unit tests |
+| `tests/test_registrations_api.py` | direct `RegistrationsAPI` unit tests |
 
 ## Reference
 
