@@ -7,33 +7,141 @@
 <meta charset="utf-8">
 <title>RBAC Report: cluster-level roles</title>
 <style>
-body { font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
-       margin: 2rem; color: #1a1a1a; background: #fff; }
-h1 { margin-bottom: 0.1rem; }
-.meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
-h2 { border-bottom: 2px solid #ddd; padding-bottom: 0.3rem; margin-top: 2rem; }
-details { border: 1px solid #ddd; border-radius: 6px; margin: 0.6rem 0; padding: 0.5rem 0.8rem; }
-details > summary { font-weight: 600; cursor: pointer; padding: 0.2rem 0; }
-table { border-collapse: collapse; width: 100%; margin: 0.5rem 0; font-size: 0.9rem; }
-th, td { border: 1px solid #ddd; padding: 0.35rem 0.6rem; text-align: left; vertical-align: top; }
-th { background: #f5f5f5; }
-code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.85em; }
-.error-banner { background: #fdecea; border: 1px solid #f5c6cb; color: #611a15;
-                padding: 0.8rem 1rem; border-radius: 6px; margin: 1rem 0; }
-.empty-note { color: #666; font-style: italic; }
-.warning-badge { display: inline-block; background: #fff3cd; border: 1px solid #ffe69c;
-                 color: #664d03; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.85rem; }
-.resolved-label { color: #444; font-size: 0.85rem; margin: 0.4rem 0 0.2rem; }
-.sub-heading { font-weight: 600; margin: 0.6rem 0 0.2rem; }
+:root {
+  --color-bg: #eef1f6;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f8fafc;
+  --color-border: #dde3ec;
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-accent: #2563eb;
+  --color-accent-dark: #1e3a8a;
+  --color-accent-soft: #dbeafe;
+  --color-role-badge-bg: #dbeafe;
+  --color-role-badge-text: #1e40af;
+  --color-clusterrole-badge-bg: #e0e7ff;
+  --color-clusterrole-badge-text: #3730a3;
+  --color-warning-bg: #fff7e6;
+  --color-warning-border: #f6c976;
+  --color-warning-text: #7a4e00;
+  --color-error-bg: #fdecea;
+  --color-error-border: #f3aca5;
+  --color-error-text: #7f1d1d;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  margin: 0; padding: 2.5rem 1.5rem 4rem;
+  color: var(--color-text); background: var(--color-bg);
+  line-height: 1.5;
+}
+.page {
+  max-width: 1100px; margin: 0 auto; background: var(--color-surface);
+  border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(30, 41, 59, 0.08);
+}
+h1 {
+  margin: 0; padding: 1.6rem 2rem;
+  background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
+  color: #fff; font-size: 1.5rem; letter-spacing: 0.01em;
+  border-bottom: 3px solid var(--color-accent-dark);
+}
+.meta {
+  color: var(--color-text-muted); font-size: 0.85rem;
+  background: var(--color-surface); margin: 0; padding: 0.6rem 2rem 0;
+}
+.meta::before { content: "\1F551\FE0E  "; }
+.context-line {
+  color: var(--color-text-muted); font-size: 0.85rem;
+  background: var(--color-surface); margin: 0; padding: 0.3rem 2rem 0;
+}
+.context-line::before { content: "\1F310\FE0E  "; }
+.context-line strong { color: var(--color-text); font-weight: 600; }
+.context-line code { font-size: 0.85em; }
+.stats-bar {
+  background: var(--color-surface); margin: 0; padding: 0.6rem 2rem 1.4rem;
+  border-bottom: 1px solid var(--color-border); display: flex; gap: 0.6rem; flex-wrap: wrap;
+}
+.stats-bar:empty { display: none; }
+.stat-pill {
+  display: inline-block; background: var(--color-accent-soft); color: var(--color-accent-dark);
+  font-size: 0.85rem; font-weight: 600; padding: 0.3rem 0.75rem; border-radius: 999px;
+}
+main { display: block; padding: 1.5rem 2rem 2rem; }
+h2 {
+  border: none; border-left: 4px solid var(--color-accent); background: var(--color-surface-alt);
+  padding: 0.45rem 0.8rem; margin-top: 2rem; border-radius: 0 6px 6px 0;
+  font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-accent-dark);
+}
+details {
+  border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent);
+  border-radius: 8px; margin: 0.7rem 0; padding: 0.6rem 0.9rem;
+  background: var(--color-surface); box-shadow: 0 1px 2px rgba(30, 41, 59, 0.04);
+  transition: box-shadow 0.15s ease;
+}
+details:hover { box-shadow: 0 2px 6px rgba(30, 41, 59, 0.1); }
+details > summary {
+  font-weight: 600; cursor: pointer; padding: 0.2rem 0; list-style: none;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before {
+  content: "\25B8"; display: inline-block; color: var(--color-accent);
+  transition: transform 0.15s ease; font-size: 0.8em;
+}
+details[open] > summary::before { transform: rotate(90deg); }
+.kind-badge {
+  display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.03em; padding: 0.15rem 0.5rem; border-radius: 999px;
+}
+.kind-badge.kind-role, .kind-badge.kind-rolebinding {
+  background: var(--color-role-badge-bg); color: var(--color-role-badge-text);
+}
+.kind-badge.kind-clusterrole, .kind-badge.kind-clusterrolebinding {
+  background: var(--color-clusterrole-badge-bg); color: var(--color-clusterrole-badge-text);
+}
+table { border-collapse: collapse; width: 100%; margin: 0.6rem 0; font-size: 0.88rem;
+        border-radius: 6px; overflow: hidden; }
+th, td { border: 1px solid var(--color-border); padding: 0.4rem 0.65rem; text-align: left; vertical-align: top; }
+th { background: var(--color-accent-dark); color: #fff; font-weight: 600; font-size: 0.8rem;
+     text-transform: uppercase; letter-spacing: 0.03em; }
+tbody tr:nth-child(even) { background: var(--color-surface-alt); }
+tbody tr:hover { background: var(--color-accent-soft); }
+code { background: var(--color-accent-soft); color: var(--color-accent-dark);
+       padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+.error-banner {
+  background: var(--color-error-bg); border: 1px solid var(--color-error-border);
+  color: var(--color-error-text); padding: 0.8rem 1rem; border-radius: 6px; margin: 1rem 0;
+  font-weight: 600;
+}
+.error-banner::before { content: "\2715  "; }
+.empty-note { color: var(--color-text-muted); font-style: italic; }
+.warning-badge {
+  display: inline-block; background: var(--color-warning-bg); border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text); padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.85rem;
+  font-weight: 600;
+}
+.warning-badge::before { content: "\26A0\FE0E  "; }
+.resolved-label { color: var(--color-text-muted); font-size: 0.85rem; margin: 0.4rem 0 0.2rem; }
+.sub-heading {
+  font-weight: 700; margin: 0.7rem 0 0.3rem; font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--color-text-muted);
+}
 </style>
 </head>
 <body>
+<div class="page">
 <h1>RBAC Report: cluster-level roles</h1>
-<p class="meta">Generated 2026-08-16T11:56:37+00:00</p>
+<p class="meta">Generated 2026-08-16T14:00:59+00:00</p>
+<p class="context-line">Context: <strong>kubernetes-admin@kubernetes</strong> &middot; Cluster: <strong>kubernetes</strong> &middot; Server: <code>https://192.168.2.102:6443</code></p>
 
+<div class="stats-bar">
+<span class="stat-pill">159 ClusterRoles</span>
+<span class="stat-pill">127 ClusterRoleBindings</span>
+</div>
+<main>
 <h2>ClusterRoles (159)</h2>
 <details>
-<summary>ClusterRole: admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -732,7 +840,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: arc-controller-gha-rs-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> arc-controller-gha-rs-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -850,7 +958,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: argocd-application-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> argocd-application-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -870,7 +978,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: argocd-applicationset-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> argocd-applicationset-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -925,7 +1033,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: argocd-manager-role-1749897928269</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> argocd-manager-role-1749897928269</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -945,7 +1053,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: argocd-manager-role-1749897956806</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> argocd-manager-role-1749897956806</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -965,7 +1073,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: argocd-manager-role-1749898123477</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> argocd-manager-role-1749898123477</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -985,7 +1093,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: argocd-manager-role-1749898727215</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> argocd-manager-role-1749898727215</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1005,7 +1113,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: argocd-server</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> argocd-server</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1053,7 +1161,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-cni-plugin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-cni-plugin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1080,7 +1188,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-crds</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-crds</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1114,7 +1222,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-extension-apiserver-auth-access</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-extension-apiserver-auth-access</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1134,7 +1242,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-kube-controllers</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-kube-controllers</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1203,7 +1311,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-node</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-node</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1342,7 +1450,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-tier-getter</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-tier-getter</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1355,7 +1463,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-tiered-policy-passthrough</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-tiered-policy-passthrough</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1368,7 +1476,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-typha</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-typha</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1486,7 +1594,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: calico-webhook-reader</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> calico-webhook-reader</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1499,7 +1607,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1645,7 +1753,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi-apiserver</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi-apiserver</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1749,7 +1857,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi-cronjob</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi-cronjob</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1762,7 +1870,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi-metrics-reader</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi-metrics-reader</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -1775,7 +1883,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi-operator-cluster</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi-operator-cluster</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2117,7 +2225,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi-pprof-reader</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi-pprof-reader</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2130,7 +2238,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi-uploadproxy</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi-uploadproxy</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2143,7 +2251,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi.kubevirt.io:admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi.kubevirt.io:admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2177,7 +2285,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi.kubevirt.io:clone-sourcer</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi.kubevirt.io:clone-sourcer</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2190,7 +2298,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi.kubevirt.io:config-reader</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi.kubevirt.io:config-reader</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2203,7 +2311,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi.kubevirt.io:edit</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi.kubevirt.io:edit</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2237,7 +2345,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cdi.kubevirt.io:view</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cdi.kubevirt.io:view</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2257,7 +2365,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cluster-admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cluster-admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2277,7 +2385,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-cainjector</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-cainjector</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2325,7 +2433,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-cluster-view</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-cluster-view</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2338,7 +2446,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-approve:cert-manager-io</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-approve:cert-manager-io</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2351,7 +2459,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-certificates</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-certificates</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2399,7 +2507,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-certificatesigningrequests</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-certificatesigningrequests</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2433,7 +2541,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-challenges</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-challenges</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2516,7 +2624,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-clusterissuers</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-clusterissuers</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2550,7 +2658,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-ingress-shim</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-ingress-shim</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2605,7 +2713,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-issuers</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-issuers</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2639,7 +2747,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-controller-orders</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-controller-orders</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2694,7 +2802,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-edit</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-edit</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2721,7 +2829,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-view</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-view</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2741,7 +2849,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: cm-cert-manager-webhook:subjectaccessreviews</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> cm-cert-manager-webhook:subjectaccessreviews</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -2754,7 +2862,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: edit</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> edit</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3355,7 +3463,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: elastic-agent</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> elastic-agent</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3431,7 +3539,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: gateway-gateway-helm-certgen:base-gateway</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> gateway-gateway-helm-certgen:base-gateway</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3451,7 +3559,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: instancetype.kubevirt.io:view</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> instancetype.kubevirt.io:view</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3464,7 +3572,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: istio-reader-clusterrole-istio-system</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> istio-reader-clusterrole-istio-system</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3547,7 +3655,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: istiod-clusterrole-istio-system</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> istiod-clusterrole-istio-system</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3707,7 +3815,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: istiod-gateway-controller-istio-system</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> istiod-gateway-controller-istio-system</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3748,7 +3856,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubeadm:get-nodes</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubeadm:get-nodes</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3761,7 +3869,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt-apiserver</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt-apiserver</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -3900,7 +4008,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -4144,7 +4252,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt-exportproxy</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt-exportproxy</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -4164,7 +4272,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt-handler</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt-handler</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -4233,7 +4341,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt-operator</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt-operator</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5212,7 +5320,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt-synchronization-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt-synchronization-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5253,7 +5361,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt.io:admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt.io:admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5364,7 +5472,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt.io:default</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt.io:default</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5384,7 +5492,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt.io:edit</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt.io:edit</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5495,7 +5603,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt.io:migrate</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt.io:migrate</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5515,7 +5623,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt.io:operator</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt.io:operator</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5528,7 +5636,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: kubevirt.io:view</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> kubevirt.io:view</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5618,7 +5726,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: local-kube-state-metrics</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> local-kube-state-metrics</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5820,7 +5928,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: local-prometheus-server</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> local-prometheus-server</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5854,7 +5962,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-agent-cluster</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-agent-cluster</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5937,7 +6045,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-cluster-admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-cluster-admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5957,7 +6065,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-cluster-authenticated</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-cluster-authenticated</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5977,7 +6085,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-cluster-extra-space-admin-rules</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-cluster-extra-space-admin-rules</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -5997,7 +6105,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-cluster-extra-space-viewer-rules</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-cluster-extra-space-viewer-rules</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -6017,7 +6125,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-cluster-space-admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-cluster-space-admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -6730,7 +6838,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-cluster-space-viewer</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-cluster-space-viewer</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7030,7 +7138,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: loft-vcluster-cluster</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> loft-vcluster-cluster</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7092,7 +7200,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: promotion-template-copy</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> promotion-template-copy</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7133,7 +7241,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:aggregate-to-admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:aggregate-to-admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7153,7 +7261,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:aggregate-to-edit</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:aggregate-to-edit</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7320,7 +7428,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:aggregate-to-view</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:aggregate-to-view</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7459,7 +7567,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:auth-delegator</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:auth-delegator</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7479,7 +7587,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:basic-user</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:basic-user</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7499,7 +7607,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:certificates.k8s.io:certificatesigningrequests:nodeclient</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:certificates.k8s.io:certificatesigningrequests:nodeclient</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7512,7 +7620,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:certificates.k8s.io:certificatesigningrequests:selfnodeclient</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:certificates.k8s.io:certificatesigningrequests:selfnodeclient</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7525,7 +7633,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:certificates.k8s.io:kube-apiserver-client-approver</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:certificates.k8s.io:kube-apiserver-client-approver</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7538,7 +7646,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:certificates.k8s.io:kube-apiserver-client-kubelet-approver</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:certificates.k8s.io:kube-apiserver-client-kubelet-approver</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7551,7 +7659,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:certificates.k8s.io:kubelet-serving-approver</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:certificates.k8s.io:kubelet-serving-approver</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7564,7 +7672,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:certificates.k8s.io:legacy-unknown-approver</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:certificates.k8s.io:legacy-unknown-approver</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7577,7 +7685,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:attachdetach-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:attachdetach-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7639,7 +7747,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:certificate-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:certificate-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7687,7 +7795,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:clusterrole-aggregation-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:clusterrole-aggregation-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7700,7 +7808,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:cronjob-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:cronjob-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7755,7 +7863,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:daemon-set-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:daemon-set-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7817,7 +7925,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:deployment-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:deployment-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7865,7 +7973,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:disruption-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:disruption-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7934,7 +8042,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:endpoint-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:endpoint-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -7975,7 +8083,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:endpointslice-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:endpointslice-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8016,7 +8124,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:endpointslicemirroring-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:endpointslicemirroring-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8064,7 +8172,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:ephemeral-volume-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:ephemeral-volume-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8098,7 +8206,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:expand-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:expand-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8153,7 +8261,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:generic-garbage-collector</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:generic-garbage-collector</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8173,7 +8281,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:horizontal-pod-autoscaler</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:horizontal-pod-autoscaler</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8263,7 +8371,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:job-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:job-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8304,7 +8412,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:legacy-service-account-token-cleaner</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:legacy-service-account-token-cleaner</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8324,7 +8432,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:namespace-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:namespace-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8358,7 +8466,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:node-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:node-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8413,7 +8521,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:persistent-volume-binder</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:persistent-volume-binder</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8510,7 +8618,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:pod-garbage-collector</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:pod-garbage-collector</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8544,7 +8652,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:pv-protection-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:pv-protection-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8564,7 +8672,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:pvc-protection-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:pvc-protection-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8591,7 +8699,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:replicaset-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:replicaset-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8632,7 +8740,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:replication-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:replication-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8673,7 +8781,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:resource-claim-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:resource-claim-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8721,7 +8829,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:resourcequota-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:resourcequota-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8748,7 +8856,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:root-ca-cert-publisher</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:root-ca-cert-publisher</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8768,7 +8876,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:route-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:route-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8795,7 +8903,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:selinux-warning-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:selinux-warning-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8836,7 +8944,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:service-account-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:service-account-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8856,7 +8964,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:service-cidrs-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:service-cidrs-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8897,7 +9005,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:service-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:service-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -8931,7 +9039,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:statefulset-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:statefulset-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9007,7 +9115,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:ttl-after-finished-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:ttl-after-finished-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9027,7 +9135,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:ttl-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:ttl-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9047,7 +9155,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:validatingadmissionpolicy-status-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:validatingadmissionpolicy-status-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9074,7 +9182,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:controller:volumeattributesclass-protection-controller</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:controller:volumeattributesclass-protection-controller</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9108,7 +9216,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:coredns</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:coredns</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9128,7 +9236,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:discovery</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:discovery</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9141,7 +9249,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:heapster</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:heapster</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9161,7 +9269,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:kube-aggregator</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:kube-aggregator</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9174,7 +9282,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:kube-controller-manager</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:kube-controller-manager</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9257,7 +9365,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:kube-dns</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:kube-dns</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9270,7 +9378,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:kube-scheduler</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:kube-scheduler</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9549,7 +9657,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:kubelet-api-admin</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:kubelet-api-admin</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9597,7 +9705,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:metrics-server</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:metrics-server</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9617,7 +9725,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:metrics-server-aggregated-reader</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:metrics-server-aggregated-reader</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9630,7 +9738,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:monitoring</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:monitoring</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9650,7 +9758,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:node</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:node</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9831,7 +9939,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:node-bootstrapper</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:node-bootstrapper</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9844,7 +9952,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:node-problem-detector</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:node-problem-detector</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9871,7 +9979,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:node-proxier</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:node-proxier</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9919,7 +10027,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:persistent-volume-provisioner</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:persistent-volume-provisioner</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9960,7 +10068,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:public-info-viewer</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:public-info-viewer</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9973,7 +10081,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:service-account-issuer-discovery</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:service-account-issuer-discovery</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -9986,7 +10094,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: system:volume-scheduler</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> system:volume-scheduler</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10013,7 +10121,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: tco-manager-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> tco-manager-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10131,7 +10239,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: tco-metrics-reader</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> tco-metrics-reader</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10144,7 +10252,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: tco-proxy-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> tco-proxy-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10164,7 +10272,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: tigera-operator</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> tigera-operator</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10359,7 +10467,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: vault-agent-injector-clusterrole</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> vault-agent-injector-clusterrole</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10372,7 +10480,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: view</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> view</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10658,7 +10766,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-apiserver-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-apiserver-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10678,7 +10786,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-manager-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-manager-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10754,7 +10862,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-metrics-auth-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-metrics-auth-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10774,7 +10882,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-metrics-reader</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-metrics-reader</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10787,7 +10895,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-virtualmachinetemplate-admin-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-virtualmachinetemplate-admin-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10807,7 +10915,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-virtualmachinetemplate-editor-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-virtualmachinetemplate-editor-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10827,7 +10935,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-virtualmachinetemplate-viewer-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-virtualmachinetemplate-viewer-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10847,7 +10955,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-virtualmachinetemplaterequest-admin-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-virtualmachinetemplaterequest-admin-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10867,7 +10975,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-virtualmachinetemplaterequest-editor-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-virtualmachinetemplaterequest-editor-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10887,7 +10995,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-virtualmachinetemplaterequest-source-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-virtualmachinetemplaterequest-source-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10900,7 +11008,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>ClusterRole: virt-template-virtualmachinetemplaterequest-viewer-role</summary>
+<summary><span class="kind-badge kind-clusterrole">ClusterRole</span> virt-template-virtualmachinetemplaterequest-viewer-role</summary>
 <table>
 <tr><th>API Groups</th><th>Resources</th><th>Resource Names</th><th>Verbs</th><th>Non-Resource URLs</th></tr>
 <tr>
@@ -10922,7 +11030,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </details>
 <h2>ClusterRoleBindings (127)</h2>
 <details>
-<summary>arc-controller-gha-rs-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> arc-controller-gha-rs-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11048,7 +11156,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>argocd-application-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> argocd-application-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11076,7 +11184,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>argocd-applicationset-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> argocd-applicationset-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11139,7 +11247,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>argocd-manager-role-binding-1749897928269</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> argocd-manager-role-binding-1749897928269</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11167,7 +11275,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>argocd-manager-role-binding-1749897956806</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> argocd-manager-role-binding-1749897956806</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11195,7 +11303,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>argocd-manager-role-binding-1749898123477</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> argocd-manager-role-binding-1749898123477</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11223,7 +11331,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>argocd-manager-role-binding-1749898727215</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> argocd-manager-role-binding-1749898727215</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11251,7 +11359,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>argocd-server</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> argocd-server</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11307,7 +11415,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-apiserver-access-calico-crds</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-apiserver-access-calico-crds</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11349,7 +11457,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-apiserver-delegate-auth</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-apiserver-delegate-auth</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11377,7 +11485,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-apiserver-webhook-reader</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-apiserver-webhook-reader</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11398,7 +11506,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-cni-plugin</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-cni-plugin</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11433,7 +11541,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-extension-apiserver-auth-access</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-extension-apiserver-auth-access</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11461,7 +11569,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-kube-controllers</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-kube-controllers</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11538,7 +11646,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-node</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-node</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11685,7 +11793,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-tier-getter</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-tier-getter</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11706,7 +11814,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-tiered-policy-passthrough</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-tiered-policy-passthrough</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11727,7 +11835,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>calico-typha</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> calico-typha</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11853,7 +11961,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cdi-apiserver</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cdi-apiserver</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11965,7 +12073,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cdi-cronjob</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cdi-cronjob</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -11986,7 +12094,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cdi-metrics-reader</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cdi-metrics-reader</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12007,7 +12115,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cdi-operator</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cdi-operator</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12357,7 +12465,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cdi-sa</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cdi-sa</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12511,7 +12619,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cdi-uploadproxy</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cdi-uploadproxy</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12532,7 +12640,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cdi.kubevirt.io:config-reader</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cdi.kubevirt.io:config-reader</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12554,7 +12662,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cluster-admin</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cluster-admin</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12582,7 +12690,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-cainjector</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-cainjector</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12638,7 +12746,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-approve:cert-manager-io</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-approve:cert-manager-io</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12659,7 +12767,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-certificates</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-certificates</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12715,7 +12823,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-certificatesigningrequests</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-certificatesigningrequests</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12757,7 +12865,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-challenges</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-challenges</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12848,7 +12956,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-clusterissuers</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-clusterissuers</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12890,7 +12998,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-ingress-shim</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-ingress-shim</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12953,7 +13061,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-issuers</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-issuers</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -12995,7 +13103,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-controller-orders</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-controller-orders</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13058,7 +13166,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>cm-cert-manager-webhook:subjectaccessreviews</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> cm-cert-manager-webhook:subjectaccessreviews</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13079,7 +13187,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>elastic-agent</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> elastic-agent</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13163,7 +13271,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>gateway-gateway-helm-certgen:base-gateway</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> gateway-gateway-helm-certgen:base-gateway</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13191,7 +13299,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>instancetype.kubevirt.io:view</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> instancetype.kubevirt.io:view</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13212,7 +13320,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>istio-reader-clusterrole-istio-system</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> istio-reader-clusterrole-istio-system</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13303,7 +13411,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>istiod-clusterrole-istio-system</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> istiod-clusterrole-istio-system</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13471,7 +13579,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>istiod-gateway-controller-istio-system</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> istiod-gateway-controller-istio-system</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13520,7 +13628,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kube-dash</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kube-dash</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13548,7 +13656,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubeadm:apiserver-kubelet-client</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubeadm:apiserver-kubelet-client</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13604,7 +13712,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubeadm:cluster-admins</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubeadm:cluster-admins</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13632,7 +13740,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubeadm:get-nodes</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubeadm:get-nodes</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13653,7 +13761,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubeadm:kubelet-bootstrap</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubeadm:kubelet-bootstrap</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13674,7 +13782,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubeadm:node-autoapprove-bootstrap</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubeadm:node-autoapprove-bootstrap</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13695,7 +13803,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubeadm:node-autoapprove-certificate-rotation</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubeadm:node-autoapprove-certificate-rotation</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13716,7 +13824,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubeadm:node-proxier</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubeadm:node-proxier</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13772,7 +13880,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt-apiserver</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt-apiserver</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13919,7 +14027,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt-apiserver-auth-delegator</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt-apiserver-auth-delegator</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -13947,7 +14055,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -14199,7 +14307,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt-exportproxy</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt-exportproxy</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -14227,7 +14335,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt-handler</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt-handler</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -14304,7 +14412,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt-operator</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt-operator</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15291,7 +15399,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt-synchronization-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt-synchronization-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15340,7 +15448,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>kubevirt.io:default</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> kubevirt.io:default</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15368,7 +15476,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>local-kube-state-metrics</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> local-kube-state-metrics</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15578,7 +15686,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>local-prometheus-server</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> local-prometheus-server</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15620,7 +15728,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>loft-agent-cluster-binding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> loft-agent-cluster-binding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15711,7 +15819,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>loft-cluster-authenticated-binding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> loft-cluster-authenticated-binding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15739,7 +15847,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>loft-loft-cluster-admin-ptgzp</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> loft-loft-cluster-admin-ptgzp</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15767,7 +15875,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>loft-loft-management-admin-ngzqg</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> loft-loft-management-admin-ngzqg</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15777,7 +15885,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 <p><code>ClusterRole</code> / <code>loft-management-admin</code></p>
 <p><span class="warning-badge">ClusterRole &#39;loft-management-admin&#39; not found</span></p>
 </details><details>
-<summary>loft-management-authenticated-binding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> loft-management-authenticated-binding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15787,7 +15895,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 <p><code>ClusterRole</code> / <code>loft-management-authenticated</code></p>
 <p><span class="warning-badge">ClusterRole &#39;loft-management-authenticated&#39; not found</span></p>
 </details><details>
-<summary>loft-vcluster-cluster-binding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> loft-vcluster-cluster-binding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15857,7 +15965,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>metrics-server:system:auth-delegator</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> metrics-server:system:auth-delegator</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15885,7 +15993,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>promotion-template-copy</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> promotion-template-copy</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15936,7 +16044,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:basic-user</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:basic-user</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -15964,7 +16072,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:attachdetach-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:attachdetach-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16034,7 +16142,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:certificate-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:certificate-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16090,7 +16198,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:clusterrole-aggregation-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:clusterrole-aggregation-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16111,7 +16219,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:cronjob-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:cronjob-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16174,7 +16282,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:daemon-set-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:daemon-set-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16244,7 +16352,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:deployment-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:deployment-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16300,7 +16408,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:disruption-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:disruption-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16377,7 +16485,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:endpoint-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:endpoint-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16426,7 +16534,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:endpointslice-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:endpointslice-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16475,7 +16583,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:endpointslicemirroring-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:endpointslicemirroring-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16531,7 +16639,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:ephemeral-volume-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:ephemeral-volume-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16573,7 +16681,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:expand-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:expand-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16636,7 +16744,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:generic-garbage-collector</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:generic-garbage-collector</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16664,7 +16772,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:horizontal-pod-autoscaler</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:horizontal-pod-autoscaler</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16762,7 +16870,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:job-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:job-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16811,7 +16919,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:legacy-service-account-token-cleaner</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:legacy-service-account-token-cleaner</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16839,7 +16947,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:namespace-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:namespace-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16881,7 +16989,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:node-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:node-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -16944,7 +17052,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:persistent-volume-binder</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:persistent-volume-binder</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17049,7 +17157,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:pod-garbage-collector</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:pod-garbage-collector</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17091,7 +17199,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:pv-protection-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:pv-protection-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17119,7 +17227,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:pvc-protection-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:pvc-protection-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17154,7 +17262,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:replicaset-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:replicaset-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17203,7 +17311,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:replication-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:replication-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17252,7 +17360,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:resource-claim-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:resource-claim-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17308,7 +17416,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:resourcequota-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:resourcequota-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17343,7 +17451,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:root-ca-cert-publisher</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:root-ca-cert-publisher</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17371,7 +17479,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:route-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:route-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17406,7 +17514,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:selinux-warning-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:selinux-warning-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17455,7 +17563,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:service-account-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:service-account-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17483,7 +17591,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:service-cidrs-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:service-cidrs-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17532,7 +17640,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:service-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:service-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17574,7 +17682,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:statefulset-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:statefulset-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17658,7 +17766,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:ttl-after-finished-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:ttl-after-finished-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17686,7 +17794,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:ttl-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:ttl-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17714,7 +17822,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:validatingadmissionpolicy-status-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:validatingadmissionpolicy-status-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17749,7 +17857,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:controller:volumeattributesclass-protection-controller</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:controller:volumeattributesclass-protection-controller</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17791,7 +17899,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:coredns</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:coredns</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17819,7 +17927,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:discovery</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:discovery</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17840,7 +17948,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:kube-controller-manager</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:kube-controller-manager</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17931,7 +18039,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:kube-dns</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:kube-dns</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -17952,7 +18060,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:kube-scheduler</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:kube-scheduler</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18239,7 +18347,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:metrics-server</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:metrics-server</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18267,7 +18375,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:monitoring</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:monitoring</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18295,7 +18403,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:node</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:node</summary>
 <div class="sub-heading">Subjects</div>
 <p class="empty-note">No subjects.</p>
 <div class="sub-heading">Role Ref</div>
@@ -18481,7 +18589,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:node-proxier</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:node-proxier</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18537,7 +18645,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:public-info-viewer</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:public-info-viewer</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18559,7 +18667,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:service-account-issuer-discovery</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:service-account-issuer-discovery</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18580,7 +18688,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>system:volume-scheduler</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> system:volume-scheduler</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18615,7 +18723,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>tco-manager-rolebinding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> tco-manager-rolebinding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18741,7 +18849,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>tco-proxy-rolebinding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> tco-proxy-rolebinding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18769,7 +18877,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>tigera-operator</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> tigera-operator</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18972,7 +19080,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>vault-agent-injector-binding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> vault-agent-injector-binding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -18993,7 +19101,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>vault-server-binding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> vault-server-binding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -19021,7 +19129,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>virt-template-apiserver-rolebinding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> virt-template-apiserver-rolebinding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -19049,7 +19157,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>virt-template-apiserver:system:auth-delegator</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> virt-template-apiserver:system:auth-delegator</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -19077,7 +19185,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>virt-template-manager-rolebinding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> virt-template-manager-rolebinding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -19161,7 +19269,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </table>
 
 </details><details>
-<summary>virt-template-metrics-auth-rolebinding</summary>
+<summary><span class="kind-badge kind-clusterrolebinding">ClusterRoleBinding</span> virt-template-metrics-auth-rolebinding</summary>
 <div class="sub-heading">Subjects</div>
 <table>
 <tr><th>Kind</th><th>Name</th><th>Namespace</th><th>API Group</th></tr>
@@ -19188,5 +19296,7 @@ code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 3px; font-siz
 </tr>
 </table>
 
-</details></body>
+</details></main>
+</div>
+</body>
 </html>

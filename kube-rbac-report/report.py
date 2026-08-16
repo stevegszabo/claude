@@ -59,7 +59,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ns_filter = expand_namespaces(args.namespaces)
 
     try:
-        core_v1, rbac_v1 = k8s_data.build_api_clients(args.kubeconfig, args.context)
+        core_v1, rbac_v1, cluster_context = k8s_data.build_api_clients(args.kubeconfig, args.context)
         namespaces = k8s_data.list_target_namespaces(core_v1, ns_filter)
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
@@ -79,7 +79,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         exit_code = 2
     cluster_out_path = os.path.join(args.output_dir, "cluster.html")
     with open(cluster_out_path, "w", encoding="utf-8") as f:
-        f.write(html_report.render_cluster_report(cluster_report))
+        f.write(html_report.render_cluster_report(cluster_report, cluster_context))
     print(f"wrote {cluster_out_path}")
 
     for ns in namespaces:
@@ -91,7 +91,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             exit_code = 2
         out_path = os.path.join(args.output_dir, f"{ns}.html")
         with open(out_path, "w", encoding="utf-8") as f:
-            f.write(html_report.render_namespace_report(report))
+            f.write(html_report.render_namespace_report(report, cluster_context))
         print(f"wrote {out_path}")
 
     return exit_code

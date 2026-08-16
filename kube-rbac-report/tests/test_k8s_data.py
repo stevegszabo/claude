@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from kubernetes import client
@@ -241,3 +241,51 @@ def test_cluster_report_cluster_roles_warning_propagates():
     report = k8s_data.fetch_cluster_report(rbac_v1, {}, warning)
     assert report.error == warning
     rbac_v1.list_cluster_role_binding.assert_not_called()
+
+
+# --- resolve_cluster_context ---------------------------------------------------
+
+
+_CONTEXTS = [
+    {"name": "kubernetes-admin@kubernetes", "context": {"cluster": "kubernetes", "user": "kubernetes-admin"}},
+    {"name": "other-ctx", "context": {"cluster": "other-cluster", "user": "other-user"}},
+]
+
+
+def test_resolve_cluster_context_uses_active_when_no_explicit_context():
+    with patch.object(
+        k8s_data.config, "list_kube_config_contexts", return_value=(_CONTEXTS, _CONTEXTS[0])
+    ), patch.object(
+        k8s_data.client.Configuration, "get_default_copy",
+        return_value=Mock(host="https://192.168.2.102:6443"),
+    ):
+        ctx = k8s_data.resolve_cluster_context(None, None)
+    assert ctx.context == "kubernetes-admin@kubernetes"
+    assert ctx.cluster == "kubernetes"
+    assert ctx.server == "https://192.168.2.102:6443"
+
+
+def test_resolve_cluster_context_matches_explicit_context():
+    with patch.object(
+        k8s_data.config, "list_kube_config_contexts", return_value=(_CONTEXTS, _CONTEXTS[0])
+    ), patch.object(
+        k8s_data.client.Configuration, "get_default_copy",
+        return_value=Mock(host="https://192.168.2.102:6443"),
+    ):
+        ctx = k8s_data.resolve_cluster_context(None, "other-ctx")
+    assert ctx.context == "other-ctx"
+    assert ctx.cluster == "other-cluster"
+
+
+def test_resolve_cluster_context_in_cluster_fallback():
+    with patch.object(
+        k8s_data.config, "list_kube_config_contexts",
+        side_effect=k8s_data.config.ConfigException("no kubeconfig"),
+    ), patch.object(
+        k8s_data.client.Configuration, "get_default_copy",
+        return_value=Mock(host="https://10.0.0.1:443"),
+    ):
+        ctx = k8s_data.resolve_cluster_context(None, None)
+    assert ctx.context == "in-cluster"
+    assert ctx.cluster is None
+    assert ctx.server == "https://10.0.0.1:443"

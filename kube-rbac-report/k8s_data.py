@@ -65,6 +65,13 @@ class ClusterReport:
     error: Optional[str] = None
 
 
+@dataclass
+class ClusterContext:
+    context: str
+    cluster: Optional[str] = None
+    server: Optional[str] = None
+
+
 # --- Cluster access -----------------------------------------------------------
 
 
@@ -75,11 +82,32 @@ def load_config(kubeconfig: Optional[str], context: Optional[str]) -> None:
         config.load_incluster_config()
 
 
+def resolve_cluster_context(kubeconfig: Optional[str], context: Optional[str]) -> ClusterContext:
+    """Best-effort description of which cluster/context is in use, for display in reports.
+
+    Must be called after load_config() so client.Configuration reflects the loaded setup.
+    """
+    server = client.Configuration.get_default_copy().host
+    try:
+        contexts, active = config.list_kube_config_contexts(config_file=kubeconfig)
+    except config.ConfigException:
+        return ClusterContext(context="in-cluster", server=server)
+    match = active
+    if context:
+        match = next((c for c in contexts if c["name"] == context), active)
+    if match is None:
+        return ClusterContext(context=context or "unknown", server=server)
+    return ClusterContext(
+        context=match["name"], cluster=match["context"].get("cluster"), server=server
+    )
+
+
 def build_api_clients(
     kubeconfig: Optional[str], context: Optional[str]
-) -> Tuple[client.CoreV1Api, client.RbacAuthorizationV1Api]:
+) -> Tuple[client.CoreV1Api, client.RbacAuthorizationV1Api, ClusterContext]:
     load_config(kubeconfig, context)
-    return client.CoreV1Api(), client.RbacAuthorizationV1Api()
+    cluster_context = resolve_cluster_context(kubeconfig, context)
+    return client.CoreV1Api(), client.RbacAuthorizationV1Api(), cluster_context
 
 
 def list_target_namespaces(
