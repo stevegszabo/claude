@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import rules_table, metadata_block %}
+{% block title %}{{ role.metadata.name }} - ClusterRole{% endblock %}
+{% block content %}
+  <p class="breadcrumb"><a href="{{ url_for('rbac.clusterrole_list') }}">ClusterRoles</a> / {{ role.metadata.name }}</p>
+  <h1>ClusterRole: {{ role.metadata.name }}</h1>
+
+  {{ metadata_block(role.metadata) }}
+
+  {% if role.aggregation_rule and role.aggregation_rule.cluster_role_selectors %}
+    <h2>Aggregation Rule</h2>
+    <p>This ClusterRole's rules are aggregated from ClusterRoles matching these label selectors:</p>
+    <ul>
+      {% for selector in role.aggregation_rule.cluster_role_selectors %}
+        <li>
+          {% if selector.match_labels %}
+            {% for k, v in selector.match_labels.items() %}<code>{{ k }}={{ v }}</code> {% endfor %}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h2>Rules</h2>
+  {{ rules_table(role.rules) }}
+{% endblock %}

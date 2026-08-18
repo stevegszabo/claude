@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}RBAC Browser{% endblock %}
+{% block content %}
+  <h1>Kubernetes RBAC Browser</h1>
+  <p>Browse RBAC resources in the cluster targeted by your current kubeconfig context.</p>
+  <div class="card-grid">
+    <a class="card" href="{{ url_for('rbac.clusterrole_list') }}">
+      <h2>ClusterRoles</h2>
+      <p>Cluster-scoped permission sets.</p>
+    </a>
+    <a class="card" href="{{ url_for('rbac.clusterrolebinding_list') }}">
+      <h2>ClusterRoleBindings</h2>
+      <p>Bind subjects to ClusterRoles, cluster-wide.</p>
+    </a>
+    <a class="card" href="{{ url_for('rbac.role_list') }}">
+      <h2>Roles</h2>
+      <p>Namespace-scoped permission sets. Select one or more namespaces.</p>
+    </a>
+    <a class="card" href="{{ url_for('rbac.rolebinding_list') }}">
+      <h2>RoleBindings</h2>
+      <p>Bind subjects to Roles (or ClusterRoles) within a namespace.</p>
+    </a>
+  </div>
+{% endblock %}

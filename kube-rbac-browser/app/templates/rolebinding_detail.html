@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import subjects_table, metadata_block %}
+{% block title %}{{ binding.metadata.name }} - RoleBinding{% endblock %}
+{% block content %}
+  <p class="breadcrumb"><a href="{{ url_for('rbac.rolebinding_list') }}">RoleBindings</a> / {{ binding.metadata.namespace }} / {{ binding.metadata.name }}</p>
+  <h1>RoleBinding: {{ binding.metadata.name }}</h1>
+  <p class="subtitle">Namespace: <strong>{{ binding.metadata.namespace }}</strong></p>
+
+  {{ metadata_block(binding.metadata) }}
+
+  <h2>Role Reference</h2>
+  <p>
+    {{ binding.role_ref.kind }}:
+    {% if binding.role_ref.kind == "ClusterRole" %}
+      <a href="{{ url_for('rbac.clusterrole_detail', name=binding.role_ref.name) }}">{{ binding.role_ref.name }}</a>
+    {% else %}
+      <a href="{{ url_for('rbac.role_detail', namespace=binding.metadata.namespace, name=binding.role_ref.name) }}">{{ binding.role_ref.name }}</a>
+    {% endif %}
+  </p>
+
+  <h2>Subjects</h2>
+  {{ subjects_table(binding.subjects) }}
+{% endblock %}

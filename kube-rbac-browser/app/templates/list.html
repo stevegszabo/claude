@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - RBAC Browser{% endblock %}
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  {% if namespaced %}
+    <form method="get" class="ns-select">
+      <fieldset>
+        <legend>Namespaces</legend>
+        <div class="ns-checkboxes">
+          {% for ns in all_namespaces %}
+            <label>
+              <input type="checkbox" name="ns" value="{{ ns }}" {% if ns in selected_namespaces %}checked{% endif %}>
+              {{ ns }}
+            </label>
+          {% endfor %}
+        </div>
+        <button type="submit">Filter</button>
+      </fieldset>
+    </form>
+    {% if not selected_namespaces %}
+      <p class="hint">Select one or more namespaces above to list {{ title|lower }}.</p>
+    {% endif %}
+  {% endif %}
+
+  {% if not namespaced or selected_namespaces %}
+    <input type="text" id="search-box" placeholder="Filter by name..." autocomplete="off">
+    <table id="resource-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          {% if namespaced %}<th>Namespace</th>{% endif %}
+          <th>Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+          <tr>
+            <td>
+              {% if resource_kind == "clusterroles" %}
+                <a href="{{ url_for('rbac.clusterrole_detail', name=item.metadata.name) }}">{{ item.metadata.name }}</a>
+              {% elif resource_kind == "clusterrolebindings" %}
+                <a href="{{ url_for('rbac.clusterrolebinding_detail', name=item.metadata.name) }}">{{ item.metadata.name }}</a>
+              {% elif resource_kind == "roles" %}
+                <a href="{{ url_for('rbac.role_detail', namespace=item.metadata.namespace, name=item.metadata.name) }}">{{ item.metadata.name }}</a>
+              {% elif resource_kind == "rolebindings" %}
+                <a href="{{ url_for('rbac.rolebinding_detail', namespace=item.metadata.namespace, name=item.metadata.name) }}">{{ item.metadata.name }}</a>
+              {% endif %}
+            </td>
+            {% if namespaced %}<td>{{ item.metadata.namespace }}</td>{% endif %}
+            <td>{{ item.metadata.creation_timestamp|age }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="{{ 3 if namespaced else 2 }}">No resources found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <script>
+    const searchBox = document.getElementById("search-box");
+    if (searchBox) {
+      searchBox.addEventListener("input", () => {
+        const q = searchBox.value.toLowerCase();
+        document.querySelectorAll("#resource-table tbody tr").forEach((row) => {
+          row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
+        });
+      });
+    }
+  </script>
+{% endblock %}

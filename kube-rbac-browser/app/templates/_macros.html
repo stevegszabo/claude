@@ -1,0 +1,65 @@
+{% macro rules_table(rules) %}
+  <table>
+    <thead>
+      <tr>
+        <th>API Groups</th>
+        <th>Resources</th>
+        <th>Resource Names</th>
+        <th>Verbs</th>
+        <th>Non-Resource URLs</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rule in rules %}
+        <tr>
+          <td>{{ (rule.api_groups or [])|join(', ') or '*' }}</td>
+          <td>{{ (rule.resources or [])|join(', ') }}</td>
+          <td>{{ (rule.resource_names or [])|join(', ') }}</td>
+          <td>{{ (rule.verbs or [])|join(', ') }}</td>
+          <td>{{ (rule.non_resource_urls or [])|join(', ') }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5">No rules.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% macro subjects_table(subjects) %}
+  <table>
+    <thead>
+      <tr>
+        <th>Kind</th>
+        <th>Name</th>
+        <th>Namespace</th>
+        <th>API Group</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for subject in subjects %}
+        <tr>
+          <td>{{ subject.kind }}</td>
+          <td>{{ subject.name }}</td>
+          <td>{{ subject.namespace or '-' }}</td>
+          <td>{{ subject.api_group or '-' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4">No subjects.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% macro metadata_block(metadata) %}
+  <dl class="metadata">
+    <dt>Created</dt><dd>{{ metadata.creation_timestamp }} ({{ metadata.creation_timestamp|age }} ago)</dd>
+    {% if metadata.labels %}
+      <dt>Labels</dt>
+      <dd>{% for k, v in metadata.labels.items() %}<code>{{ k }}={{ v }}</code> {% endfor %}</dd>
+    {% endif %}
+    {% if metadata.annotations %}
+      <dt>Annotations</dt>
+      <dd>{% for k, v in metadata.annotations.items() %}<code>{{ k }}={{ v }}</code><br>{% endfor %}</dd>
+    {% endif %}
+  </dl>
+{% endmacro %}

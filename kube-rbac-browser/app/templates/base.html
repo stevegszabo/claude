@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Kubernetes RBAC Browser{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <a class="brand" href="{{ url_for('rbac.index') }}">RBAC Browser</a>
+    <nav>
+      <a href="{{ url_for('rbac.clusterrole_list') }}">ClusterRoles</a>
+      <a href="{{ url_for('rbac.clusterrolebinding_list') }}">ClusterRoleBindings</a>
+      <a href="{{ url_for('rbac.role_list') }}">Roles</a>
+      <a href="{{ url_for('rbac.rolebinding_list') }}">RoleBindings</a>
+    </nav>
+    <form method="post" action="{{ url_for('rbac.set_context') }}" class="context-select">
+      <input type="hidden" name="next" value="{{ request.path }}{{ '?' + request.query_string.decode() if request.query_string else '' }}">
+      <label for="context">Context</label>
+      <select name="context" id="context" onchange="this.form.submit()">
+        {% for name in available_contexts %}
+          <option value="{{ name }}" {% if name == current_context_name %}selected{% endif %}>
+            {{ name }}{% if name == default_context_name %} (default){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

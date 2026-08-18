@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_macros.html" import rules_table, metadata_block %}
+{% block title %}{{ role.metadata.name }} - Role{% endblock %}
+{% block content %}
+  <p class="breadcrumb"><a href="{{ url_for('rbac.role_list') }}">Roles</a> / {{ role.metadata.namespace }} / {{ role.metadata.name }}</p>
+  <h1>Role: {{ role.metadata.name }}</h1>
+  <p class="subtitle">Namespace: <strong>{{ role.metadata.namespace }}</strong></p>
+
+  {{ metadata_block(role.metadata) }}
+
+  <h2>Rules</h2>
+  {{ rules_table(role.rules) }}
+{% endblock %}
