@@ -295,27 +295,56 @@ class ClusterCLITests(unittest.TestCase):
     def test_update(self):
         exit_code, out, calls = run_cli(
             ["cluster", "update", "--id", "k1", "--update-mode", "MANUAL"],
-            [LOGIN_OK, FakeResponse(200, {"id": "k1", "name": "my-cluster"}), LOGOUT_OK],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"id": "k1", "name": "my-cluster", "type": "KUBERNETES"}),
+                FakeResponse(200, {"id": "k1", "name": "my-cluster"}),
+                LOGOUT_OK,
+            ],
         )
         self.assertEqual(exit_code, 0)
-        method, url, kwargs = calls[1]
-        self.assertEqual(method, "PATCH")
-        self.assertEqual(url, BASE + "/inventory-sources/k1")
-        self.assertEqual(kwargs["json"]["details"]["k8s"]["updateMode"], "MANUAL")
+        get_method, get_url, _ = calls[1]
+        self.assertEqual((get_method, get_url), ("GET", BASE + "/inventory-sources/k1"))
+        put_method, put_url, put_kwargs = calls[2]
+        self.assertEqual(put_method, "PUT")
+        self.assertEqual(put_url, BASE + "/inventory-sources/k1")
+        self.assertEqual(put_kwargs["json"]["details"]["k8s"]["updateMode"], "MANUAL")
 
     def test_update_with_config(self):
         exit_code, out, calls = run_cli(
             ["cluster", "update", "--id", "k1", "--config", "env=prod"],
-            [LOGIN_OK, FakeResponse(200, {"id": "k1", "name": "my-cluster"}), LOGOUT_OK],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"id": "k1", "name": "my-cluster", "type": "KUBERNETES"}),
+                FakeResponse(200, {"id": "k1", "name": "my-cluster"}),
+                LOGOUT_OK,
+            ],
         )
         self.assertEqual(exit_code, 0)
-        method, url, kwargs = calls[1]
-        self.assertEqual(method, "PATCH")
-        self.assertEqual(url, BASE + "/inventory-sources/k1")
+        put_method, put_url, put_kwargs = calls[2]
+        self.assertEqual(put_method, "PUT")
+        self.assertEqual(put_url, BASE + "/inventory-sources/k1")
         self.assertEqual(
-            kwargs["json"]["details"]["k8s"]["configurations"],
+            put_kwargs["json"]["details"]["k8s"]["configurations"],
             [{"type": "CONTROLLER_CONFIG", "key": "env", "value": "prod"}],
         )
+
+    def test_update_with_address(self):
+        exit_code, out, calls = run_cli(
+            ["cluster", "update", "--id", "k1", "--address", "10.0.0.99"],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"id": "k1", "name": "my-cluster", "type": "KUBERNETES",
+                                    "address": "10.0.0.5"}),
+                FakeResponse(200, {"id": "k1", "name": "my-cluster"}),
+                LOGOUT_OK,
+            ],
+        )
+        self.assertEqual(exit_code, 0)
+        put_method, put_url, put_kwargs = calls[2]
+        self.assertEqual(put_method, "PUT")
+        self.assertEqual(put_url, BASE + "/inventory-sources/k1")
+        self.assertEqual(put_kwargs["json"]["address"], "10.0.0.99")
 
     def test_update_credential_id_and_name_mutually_exclusive(self):
         stderr = io.StringIO()

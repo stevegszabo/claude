@@ -145,6 +145,7 @@ register_cluster.py cluster create --name NAME --address HOST \
     [--distribution-type TANZU_GUEST_CLUSTER|VANILLA_ON_VSPHERE|NON_VSPHERE] \
     [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...] [--skip-if-exists]
 register_cluster.py cluster update --id ID \
+    [--address HOST] \
     [--credential-id ID | --credential-name NAME] \
     [--update-mode AUTO|MANUAL] [--config KEY=VALUE ...]
 register_cluster.py cluster delete --id ID [--yes] [--cleanup]
@@ -167,12 +168,13 @@ already exists. Passing `--skip-if-exists` looks up the name first (exact match)
 and, if found, prints a short message and exits successfully without attempting
 the create — useful for re-running a create from a script/pipeline idempotently.
 
-**Note on `update`:** PPDM's `/inventory-sources/{id}` endpoint has no
-full-replace `PUT` — only `PATCH`, scoped to the cluster's `details.k8s`
-object (controller configuration entries, update mode) plus, defensively, the
-credential reference. If your PPDM version doesn't honor a credential change
-via this endpoint, delete and recreate the registration with the new
-credential instead.
+**Note on `update`:** unlike credential update, `cluster update` fetches the
+current registration and sends the merged result back via a full-replace
+`PUT` to `/inventory-sources/{id}` — the same fetch-merge-replace pattern
+`credential update` uses. This is what makes changing `--address` (the
+Kubernetes API server host/IP, e.g. after the cluster's endpoint moves)
+possible, alongside the credential reference and `details.k8s` fields
+(controller configuration entries, update mode).
 
 ### Filtering
 

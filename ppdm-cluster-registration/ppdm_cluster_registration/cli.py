@@ -104,6 +104,7 @@ def _build_parser():
 
     clus_update = cluster_action.add_parser("update", help="Update a cluster registration")
     clus_update.add_argument("--id", required=True)
+    clus_update.add_argument("--address", help="New Kubernetes API server host/IP")
     cred_group = clus_update.add_mutually_exclusive_group()
     cred_group.add_argument("--credential-id", help="ID of an existing KUBERNETES credential")
     cred_group.add_argument("--credential-name", help="Name of an existing KUBERNETES credential")
@@ -240,6 +241,7 @@ def _run_cluster(client, args):
             credential_id = credentials_api.resolve_id(name=args.credential_name)
         _print(api.update(
             args.id,
+            address=args.address,
             credential_id=credential_id,
             update_mode=args.update_mode,
             configurations=_parse_configs(args.config),

@@ -69,17 +69,52 @@ class RegistrationsAPITests(unittest.TestCase):
             },
         )
 
-    def test_update_omits_details_and_credentials_when_not_given(self):
+    def test_update_fetches_current_and_preserves_unrelated_fields(self):
+        self.client.request.side_effect = [
+            {"id": "k1", "name": "my-cluster", "type": "KUBERNETES", "address": "10.0.0.5",
+             "port": 6443, "credentials": {"id": "c1"}},
+            {"id": "k1"},
+        ]
         self.api.update("k1")
-        method, path = self.client.request.call_args.args
-        payload = self.client.request.call_args.kwargs["json"]
-        self.assertEqual((method, path), ("PATCH", "/inventory-sources/k1"))
-        self.assertEqual(payload, {"id": "k1"})
+
+        get_call = self.client.request.call_args_list[0]
+        self.assertEqual(get_call.args, ("GET", "/inventory-sources/k1"))
+
+        put_call = self.client.request.call_args_list[1]
+        self.assertEqual(put_call.args, ("PUT", "/inventory-sources/k1"))
+        payload = put_call.kwargs["json"]
+        self.assertEqual(payload["id"], "k1")
+        self.assertEqual(payload["name"], "my-cluster")
+        self.assertEqual(payload["type"], "KUBERNETES")
+        self.assertEqual(payload["address"], "10.0.0.5")
+        self.assertEqual(payload["credentials"], {"id": "c1"})
+
+    def test_update_changes_address_when_given(self):
+        self.client.request.side_effect = [
+            {"id": "k1", "name": "my-cluster", "type": "KUBERNETES", "address": "10.0.0.5"},
+            {"id": "k1"},
+        ]
+        self.api.update("k1", address="10.0.0.99")
+        payload = self.client.request.call_args_list[1].kwargs["json"]
+        self.assertEqual(payload["address"], "10.0.0.99")
+
+    def test_update_leaves_address_unchanged_when_omitted(self):
+        self.client.request.side_effect = [
+            {"id": "k1", "name": "my-cluster", "type": "KUBERNETES", "address": "10.0.0.5"},
+            {"id": "k1"},
+        ]
+        self.api.update("k1", update_mode="MANUAL")
+        payload = self.client.request.call_args_list[1].kwargs["json"]
+        self.assertEqual(payload["address"], "10.0.0.5")
 
     def test_update_includes_details_and_credentials_when_given(self):
+        self.client.request.side_effect = [
+            {"id": "k1", "name": "my-cluster", "type": "KUBERNETES"},
+            {"id": "k1"},
+        ]
         self.api.update("k1", credential_id="c2", update_mode="MANUAL",
                          configurations=[{"type": "CONTROLLER_CONFIG", "key": "tier", "value": "1"}])
-        payload = self.client.request.call_args.kwargs["json"]
+        payload = self.client.request.call_args_list[1].kwargs["json"]
         self.assertEqual(payload["id"], "k1")
         self.assertEqual(payload["credentials"], {"id": "c2"})
         self.assertEqual(
@@ -88,6 +123,19 @@ class RegistrationsAPITests(unittest.TestCase):
                 "updateMode": "MANUAL",
                 "configurations": [{"type": "CONTROLLER_CONFIG", "key": "tier", "value": "1"}],
             },
+        )
+
+    def test_update_merges_configurations_onto_existing_k8s_details(self):
+        self.client.request.side_effect = [
+            {"id": "k1", "name": "my-cluster", "type": "KUBERNETES",
+             "details": {"k8s": {"distributionType": "VANILLA_ON_VSPHERE"}}},
+            {"id": "k1"},
+        ]
+        self.api.update("k1", update_mode="AUTO")
+        payload = self.client.request.call_args_list[1].kwargs["json"]
+        self.assertEqual(
+            payload["details"]["k8s"],
+            {"distributionType": "VANILLA_ON_VSPHERE", "updateMode": "AUTO"},
         )
 
     def test_delete_uses_id_in_path(self):

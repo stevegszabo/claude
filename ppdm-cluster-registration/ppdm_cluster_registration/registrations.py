@@ -52,30 +52,33 @@ class RegistrationsAPI:
             payload["details"] = {"k8s": k8s_details}
         return self.client.request("POST", "/inventory-sources", json=payload)
 
-    def update(self, id, credential_id=None, update_mode=None, configurations=None):
-        """Partially update a cluster registration.
-
-        The PPDM public API does not expose a full-replace (PUT) operation
-        for inventory sources of type KUBERNETES -- only PATCH, scoped to
-        `details.k8s` (per the InventorySourcePatchRequest schema: `id` +
-        `details`). `credential_id` is included as a top-level `credentials`
-        field defensively, since whether credential rotation is honored via
-        this endpoint is version-dependent; if it is ignored, delete and
-        recreate the registration with the new credential instead.
+    def update(self, id, address=None, credential_id=None, update_mode=None, configurations=None):
+        """Full update (PUT) of a cluster registration. Fetches the current
+        object and merges in the supplied changes before sending it back as
+        a complete replacement -- PPDM's inventory-sources endpoint accepts
+        a full-document PUT (confirmed against Dell's own reference
+        PowerShell automation, which performs a plain PUT with an arbitrary
+        body, and a Dell engineer's worked GET-modify-PUT example for
+        updating a Kubernetes inventory source's configuration), the same
+        pattern CredentialsAPI.update() already uses.
         """
-        k8s_details = {}
+        current = self.get(id)
+        payload = dict(current)
+        payload["id"] = id
+        if address is not None:
+            payload["address"] = address
+        if credential_id is not None:
+            payload["credentials"] = {"id": credential_id}
+
+        k8s_details = dict(current.get("details", {}).get("k8s", {}))
         if update_mode is not None:
             k8s_details["updateMode"] = update_mode
         if configurations is not None:
             k8s_details["configurations"] = configurations
-
-        payload = {"id": id}
         if k8s_details:
-            payload["details"] = {"k8s": k8s_details}
-        if credential_id is not None:
-            payload["credentials"] = {"id": credential_id}
+            payload.setdefault("details", {})["k8s"] = k8s_details
 
-        return self.client.request("PATCH", "/inventory-sources/{}".format(id), json=payload)
+        return self.client.request("PUT", "/inventory-sources/{}".format(id), json=payload)
 
     def delete(self, id):
         """Delete a cluster registration by ID."""
