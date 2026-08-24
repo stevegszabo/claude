@@ -5,6 +5,7 @@ so every credential/cluster operation can be exercised end-to-end through
 the CLI without a real PPDM appliance. Each test asserts the exact HTTP
 method, URL, and JSON body sent for every call PPDM would receive.
 """
+import base64
 import contextlib
 import io
 import os
@@ -12,6 +13,7 @@ import unittest
 from unittest import mock
 
 from ppdm_cluster_registration.cli import main
+from tests.test_certificates_api import _make_self_signed_pem
 
 BASE = "https://ppdm.example.com:8443/api/v2"
 
@@ -422,6 +424,107 @@ class ClusterCLITests(unittest.TestCase):
         delete_method, delete_url, _ = calls[2]
         self.assertEqual(delete_method, "DELETE")
         self.assertEqual(delete_url, BASE + "/inventory-sources/k1")
+
+
+class CertificateCLITests(unittest.TestCase):
+    EXPECTED_ID = base64.b64encode(b"192.168.2.102:6443:host").decode()
+
+    def test_create_skip_if_exists_when_present(self):
+        exit_code, out, calls = run_cli(
+            ["certificate", "create", "--address", "192.168.2.102", "--k8s-port", "6443",
+             "--skip-if-exists"],
+            [
+                LOGIN_OK,
+                FakeResponse(200, {"content": [{"id": self.EXPECTED_ID}]}),
+                LOGOUT_OK,
+            ],
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertIn("already exists, skipping", out)
+        self.assertEqual(len(calls), 3)
+        list_method, list_url, _ = calls[1]
+        self.assertEqual((list_method, list_url), ("GET", BASE + "/certificates"))
+
+    def test_create_skip_if_exists_when_absent(self):
+        pem = _make_self_signed_pem(common_name="kube-apiserver")
+        with mock.patch(
+            "ppdm_cluster_registration.cli.CertificatesAPI.fetch_certificate",
+            return_value=pem,
+        ):
+            exit_code, out, calls = run_cli(
+                ["certificate", "create", "--address", "192.168.2.102", "--k8s-port", "6443",
+                 "--skip-if-exists"],
+                [
+                    LOGIN_OK,
+                    FakeResponse(200, {"content": []}),
+                    FakeResponse(200, {"id": self.EXPECTED_ID}),
+                    FakeResponse(200, {"id": self.EXPECTED_ID, "fingerprint": "f",
+                                        "state": "UNKNOWN"}),
+                    FakeResponse(200, {}),
+                    FakeResponse(200, {"id": self.EXPECTED_ID, "state": "ACCEPTED"}),
+                    LOGOUT_OK,
+                ],
+            )
+        self.assertEqual(exit_code, 0)
+        self.assertNotIn("already exists", out)
+        post_method, post_url, _ = calls[2]
+        self.assertEqual((post_method, post_url), ("POST", BASE + "/certificates"))
+
+    def test_update(self):
+        pem = _make_self_signed_pem(common_name="kube-apiserver")
+        with mock.patch(
+            "ppdm_cluster_registration.cli.CertificatesAPI.fetch_certificate",
+            return_value=pem,
+        ):
+            exit_code, out, calls = run_cli(
+                ["certificate", "update", "--address", "192.168.2.102", "--k8s-port", "6443"],
+                [
+                    LOGIN_OK,
+                    FakeResponse(200, {"id": self.EXPECTED_ID, "host": "192.168.2.102",
+                                        "port": 6443, "type": "HOST", "verify": False,
+                                        "fingerprint": "STALE", "state": "UNKNOWN"}),
+                    FakeResponse(200, {"id": self.EXPECTED_ID, "state": "ACCEPTED"}),
+                    LOGOUT_OK,
+                ],
+            )
+        self.assertEqual(exit_code, 0)
+        get_method, get_url, _ = calls[1]
+        self.assertEqual((get_method, get_url), ("GET", BASE + "/certificates/" + self.EXPECTED_ID))
+        put_method, put_url, put_kwargs = calls[2]
+        self.assertEqual((put_method, put_url), ("PUT", BASE + "/certificates/" + self.EXPECTED_ID))
+        self.assertEqual(put_kwargs["json"]["state"], "ACCEPTED")
+        self.assertNotEqual(put_kwargs["json"]["fingerprint"], "STALE")
+
+    def test_delete_by_id(self):
+        exit_code, out, calls = run_cli(
+            ["certificate", "delete", "--id", "cert1", "--yes"],
+            [LOGIN_OK, FakeResponse(204, None), LOGOUT_OK],
+        )
+        self.assertEqual(exit_code, 0)
+        delete_method, delete_url, _ = calls[1]
+        self.assertEqual((delete_method, delete_url), ("DELETE", BASE + "/certificates/cert1"))
+
+    def test_delete_by_address_computes_id(self):
+        exit_code, out, calls = run_cli(
+            ["certificate", "delete", "--address", "192.168.2.102", "--k8s-port", "6443", "--yes"],
+            [LOGIN_OK, FakeResponse(204, None), LOGOUT_OK],
+        )
+        self.assertEqual(exit_code, 0)
+        delete_method, delete_url, _ = calls[1]
+        self.assertEqual(
+            (delete_method, delete_url),
+            ("DELETE", BASE + "/certificates/" + self.EXPECTED_ID),
+        )
+
+    def test_delete_requires_id_or_address(self):
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit) as ctx:
+                main([
+                    "--server", "ppdm.example.com", "--user", "admin", "--password", "sekret",
+                    "certificate", "delete", "--yes",
+                ])
+        self.assertNotEqual(ctx.exception.code, 0)
 
 
 class ErrorHandlingTests(unittest.TestCase):

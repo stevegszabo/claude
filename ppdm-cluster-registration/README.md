@@ -44,8 +44,12 @@ It covers:
 3. **Cluster registrations** — the registered cluster itself. Backed by
    PPDM's `Inventory Source` resource (`/api/v2/inventory-sources`), scoped to
    `type: KUBERNETES`.
+4. **Cluster certificates** — the cluster's Kubernetes API server certificate,
+   which PPDM needs to trust (e.g. when it's self-signed or signed by an
+   internal CA). Backed by PPDM's `Certificates` resource (`/api/v2/certificates`).
 
-Each resource supports list, get, create, update, and delete.
+All four resources support the full list, get, create, update, and delete
+set.
 
 ## Install
 
@@ -53,7 +57,8 @@ Each resource supports list, get, create, update, and delete.
 pip install -r requirements.txt
 ```
 
-Requires Python 3.7+ and the `requests` library.
+Requires Python 3.7+ and the `requests` and `cryptography` libraries (the
+latter parses X.509 certificate fields for the `certificate` commands).
 
 ## Authentication
 
@@ -176,12 +181,64 @@ Kubernetes API server host/IP, e.g. after the cluster's endpoint moves)
 possible, alongside the credential reference and `details.k8s` fields
 (controller configuration entries, update mode).
 
+### `certificate` — manage cluster certificates
+
+```bash
+register_cluster.py certificate list [--address SUBSTR] [--id SUBSTR]
+register_cluster.py certificate get --id ID
+register_cluster.py certificate create --address HOST [--k8s-port PORT] [--skip-if-exists]
+register_cluster.py certificate update --address HOST [--k8s-port PORT]
+register_cluster.py certificate delete (--id ID | --address HOST [--k8s-port PORT]) [--yes]
+```
+
+Unlike credentials and cluster registrations, a certificate has no name and
+no caller-chosen ID — its `id` is deterministic, computed from
+`--address`/`--k8s-port` alone (base64 of `"{host}:{port}:host"`). `create`,
+`update`, and `list --address` all key off that same host/port; `delete`
+accepts either the computed `id` directly or `--address`/`--k8s-port` to
+derive it.
+
+**`create`** connects to the cluster's Kubernetes API server at
+`--address`/`--k8s-port` over TLS and extracts the certificate it presents,
+without verifying it — the goal is to capture certs PPDM doesn't yet trust
+(self-signed, or signed by an internal CA) — then follows PPDM's documented
+certificate flow to push and accept it:
+
+1. `POST /certificates` with the extracted certificate's validity window,
+   SHA-256 fingerprint (64-character hex, no separators), subject, issuer,
+   and `state: "ACCEPTED"`.
+2. `GET /certificates/{id}` back.
+3. Build a new payload from that response, re-asserting `state: "ACCEPTED"`
+   and the server's own `fingerprint`, then `PUT /certificates/{id}`.
+4. `GET /certificates/{id}` once more to confirm `state` is `"ACCEPTED"` —
+   raises an error if it isn't.
+
+```bash
+register_cluster.py --server ppdm.example.com certificate create \
+  --address k8s-api.example.com
+```
+
+**`update`** re-fetches the certificate from the same Kubernetes API server
+and `PUT`s the refreshed validity window, fingerprint, subject, issuer, and
+`state: "ACCEPTED"` onto the existing PPDM record — useful after the
+cluster's certificate has been rotated. `host`/`port`/`type`/`verify` carry
+over unchanged from the existing record.
+
+**`--skip-if-exists`** (create only): checks whether a certificate for this
+exact `--address`/`--k8s-port` already exists (via its computed `id`)
+before creating; if so, prints a short message and exits successfully
+without attempting the create — the same idempotent-rerun convenience
+`credential`/`cluster create` offer, keyed on `id` instead of `name` since
+certificates have none.
+
 ### Filtering
 
 `list` builds a PPDM filter expression under the hood
 (`type eq "KUBERNETES" and name lk "%<name>%"`, PPDM's own filter syntax) —
 the same substring-match convention Dell's own reference scripts use, so
-`--name` doesn't need to be an exact match.
+`--name` doesn't need to be an exact match. Certificates aren't scoped to a
+`type` and have no `name` field; their `list` filter matches substrings of
+`host` (via `--address`) and/or `id` instead.
 
 ## Development
 
@@ -195,14 +252,24 @@ python -m unittest discover -s tests -v
 no extra dependency) to exercise every credential and cluster operation
 end-to-end through the CLI without needing a real PPDM appliance — it asserts
 the exact HTTP method, URL, and JSON body sent for each call.
-`tests/test_credentials_api.py` and `tests/test_registrations_api.py` instead
-test `CredentialsAPI`/`RegistrationsAPI` directly against a mocked
-`PPDMClient`, independent of the CLI layer — covering filter/payload
-construction, `resolve_id` matching, and `cleanup()`'s per-policy/per-group
-unassignment batching. **None of this has been run against a live PPDM
-appliance**; do that before relying on this in production, particularly to
-confirm your PPDM version's exact behavior for `cluster update` credential
-rotation (see note above).
+`tests/test_credentials_api.py`, `tests/test_registrations_api.py`, and
+`tests/test_certificates_api.py` instead test `CredentialsAPI`/
+`RegistrationsAPI`/`CertificatesAPI` directly against a mocked `PPDMClient`,
+independent of the CLI layer — covering filter/payload construction,
+`resolve_id` matching, `cleanup()`'s per-policy/per-group unassignment
+batching, and certificate parsing/PUT-POST flow construction.
+`tests/test_filters.py` covers the shared filter-expression builder
+directly. This test suite itself is still mock-only (no real PPDM
+appliance involved). Separately: the `cluster update` full-PUT rework
+described above (including `--address`) **has been tested against a live
+PPDM appliance and confirmed working**, and `certificate create`'s
+Kubernetes-side extraction/parsing (`fetch_certificate`/
+`describe_certificate`) **has been tested against a real Kubernetes API
+server and confirmed working**. Certificate `create`/`update`/`delete`'s
+actual PPDM-side requests (the POST/GET/PUT/GET flow) and the `list`
+`--address` filter have not been verified against a live PPDM appliance —
+do that, along with any other unverified operation, before relying on them
+in production.
 
 ## Project layout
 
@@ -211,6 +278,7 @@ rotation (see note above).
 | `ppdm_cluster_registration/client.py` | `PPDMClient`: login/logout, generic authenticated request |
 | `ppdm_cluster_registration/credentials.py` | `CredentialsAPI`: cluster credential CRUD |
 | `ppdm_cluster_registration/registrations.py` | `RegistrationsAPI`: cluster registration CRUD |
+| `ppdm_cluster_registration/certificates.py` | `CertificatesAPI`: cluster certificate CRUD, plus Kubernetes API cert extraction/parsing |
 | `ppdm_cluster_registration/cli.py` | argparse CLI wiring |
 | `ppdm_cluster_registration/exceptions.py` | `PPDMAPIError` |
 | `ppdm_cluster_registration/filters.py` | shared PPDM filter-expression builder |
@@ -219,6 +287,8 @@ rotation (see note above).
 | `tests/test_cli_smoke.py` | mocked-HTTP smoke tests (CLI end-to-end) |
 | `tests/test_credentials_api.py` | direct `CredentialsAPI` unit tests |
 | `tests/test_registrations_api.py` | direct `RegistrationsAPI` unit tests |
+| `tests/test_certificates_api.py` | direct `CertificatesAPI` unit tests |
+| `tests/test_filters.py` | direct `build_filter()` unit tests |
 
 ## Reference
 
