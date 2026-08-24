@@ -7,6 +7,7 @@ import sys
 from .client import PPDMClient
 from .credentials import CredentialsAPI
 from .registrations import RegistrationsAPI
+from .certificates import CertificatesAPI
 from .exceptions import PPDMAPIError
 
 
@@ -124,6 +125,33 @@ def _build_parser():
             "and asset groups, as PPDM requires."
         ),
     )
+
+    certificate = resource.add_parser("certificate", help="Manage cluster certificates")
+    certificate_action = certificate.add_subparsers(dest="action", required=True)
+
+    cert_list = certificate_action.add_parser("list", help="List certificates")
+    cert_list.add_argument("--name", help="Filter by name (substring match)")
+    cert_list.add_argument("--id", help="Filter by ID (substring match)")
+
+    cert_get = certificate_action.add_parser("get", help="Get a certificate by ID")
+    cert_get.add_argument("--id", required=True)
+
+    cert_create = certificate_action.add_parser("create", help="Create a certificate")
+    cert_group = cert_create.add_mutually_exclusive_group(required=True)
+    cert_group.add_argument("--cluster-id", help="ID of an existing cluster registration")
+    cert_group.add_argument("--cluster-name", help="Name of an existing cluster registration")
+    cert_create.add_argument("--address", required=True, help="Kubernetes API server host/IP")
+    cert_create.add_argument(
+        "--k8s-port", type=int, default=6443, dest="k8s_port",
+        help="Kubernetes API server port (default: 6443). Distinct from the top-level --port, which is PPDM's own API port.",
+    )
+
+    cert_update = certificate_action.add_parser("update", help="Update a certificate")
+    cert_update.add_argument("--id", required=True)
+
+    cert_delete = certificate_action.add_parser("delete", help="Delete a certificate")
+    cert_delete.add_argument("--id", required=True)
+    cert_delete.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
 
     return parser
 
@@ -266,6 +294,34 @@ def _run_cluster(client, args):
         print("Cluster registration {} deleted.".format(args.id))
 
 
+def _run_certificate(client, args):
+    """Dispatch a `certificate` subcommand (list/get/create/update/delete)
+    to the matching CertificatesAPI call and print the result. For create,
+    resolves --cluster-name to an ID via RegistrationsAPI first, since
+    CertificatesAPI itself only accepts a cluster ID.
+    """
+    api = CertificatesAPI(client)
+    if args.action == "list":
+        _print(api.list(name=args.name, id=args.id))
+    elif args.action == "get":
+        _print(api.get(args.id))
+    elif args.action == "create":
+        cluster_id = args.cluster_id
+        if args.cluster_name:
+            registrations_api = RegistrationsAPI(client)
+            cluster_id = registrations_api.resolve_id(name=args.cluster_name)
+        pem = api.fetch_certificate(args.address, port=args.k8s_port)
+        _print(api.describe_certificate(pem))
+    elif args.action == "update":
+        _print(api.update(args.id))
+    elif args.action == "delete":
+        if not args.yes and not _confirm("Delete certificate {}?".format(args.id)):
+            print("Aborted.")
+            return
+        api.delete(args.id)
+        print("Certificate {} deleted.".format(args.id))
+
+
 def main(argv=None):
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -283,6 +339,8 @@ def main(argv=None):
                 _run_credential(client, args)
             elif args.resource == "cluster":
                 _run_cluster(client, args)
+            elif args.resource == "certificate":
+                _run_certificate(client, args)
     except PPDMAPIError as err:
         print("Error: {}".format(err), file=sys.stderr)
         return 1
