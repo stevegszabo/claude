@@ -64,6 +64,7 @@ class RegistrationsAPI:
         """
         current = self.get(id)
         payload = dict(current)
+        payload.pop("_links", None)
         payload["id"] = id
         if address is not None:
             payload["address"] = address
