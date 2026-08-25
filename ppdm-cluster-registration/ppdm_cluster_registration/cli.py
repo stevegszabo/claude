@@ -151,13 +151,6 @@ def _build_parser():
         ),
     )
 
-    cert_update = certificate_action.add_parser("update", help="Update a certificate")
-    cert_update.add_argument("--address", required=True, help="Kubernetes API server host/IP")
-    cert_update.add_argument(
-        "--k8s-port", type=int, default=6443, dest="k8s_port",
-        help="Kubernetes API server port (default: 6443). Distinct from the top-level --port, which is PPDM's own API port.",
-    )
-
     cert_delete = certificate_action.add_parser("delete", help="Delete a certificate")
     cert_delete_group = cert_delete.add_mutually_exclusive_group(required=True)
     cert_delete_group.add_argument("--id", help="ID of the certificate to delete")
@@ -329,8 +322,6 @@ def _run_certificate(client, args):
                     args.address, args.k8s_port))
                 return
         _print(api.create(args.address, port=args.k8s_port))
-    elif args.action == "update":
-        _print(api.update(args.address, port=args.k8s_port))
     elif args.action == "delete":
         cert_id = args.id or api.compute_id(args.address, args.k8s_port)
         if not args.yes and not _confirm("Delete certificate {}?".format(cert_id)):

@@ -470,31 +470,6 @@ class CertificateCLITests(unittest.TestCase):
         post_method, post_url, _ = calls[2]
         self.assertEqual((post_method, post_url), ("POST", BASE + "/certificates"))
 
-    def test_update(self):
-        pem = _make_self_signed_pem(common_name="kube-apiserver")
-        with mock.patch(
-            "ppdm_cluster_registration.cli.CertificatesAPI.fetch_certificate",
-            return_value=pem,
-        ):
-            exit_code, out, calls = run_cli(
-                ["certificate", "update", "--address", "192.168.2.102", "--k8s-port", "6443"],
-                [
-                    LOGIN_OK,
-                    FakeResponse(200, {"id": self.EXPECTED_ID, "host": "192.168.2.102",
-                                        "port": 6443, "type": "HOST", "verify": False,
-                                        "fingerprint": "STALE", "state": "UNKNOWN"}),
-                    FakeResponse(200, {"id": self.EXPECTED_ID, "state": "ACCEPTED"}),
-                    LOGOUT_OK,
-                ],
-            )
-        self.assertEqual(exit_code, 0)
-        get_method, get_url, _ = calls[1]
-        self.assertEqual((get_method, get_url), ("GET", BASE + "/certificates/" + self.EXPECTED_ID))
-        put_method, put_url, put_kwargs = calls[2]
-        self.assertEqual((put_method, put_url), ("PUT", BASE + "/certificates/" + self.EXPECTED_ID))
-        self.assertEqual(put_kwargs["json"]["state"], "ACCEPTED")
-        self.assertNotEqual(put_kwargs["json"]["fingerprint"], "STALE")
-
     def test_delete_by_id(self):
         exit_code, out, calls = run_cli(
             ["certificate", "delete", "--id", "cert1", "--yes"],
