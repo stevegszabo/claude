@@ -48,8 +48,9 @@ It covers:
    which PPDM needs to trust (e.g. when it's self-signed or signed by an
    internal CA). Backed by PPDM's `Certificates` resource (`/api/v2/certificates`).
 
-All four resources support the full list, get, create, update, and delete
-set.
+Credentials and cluster registrations support the full list, get, create,
+update, and delete set. Certificates support list, get, create, and delete
+-- PPDM's API does not support updating an existing certificate record.
 
 ## Install
 
@@ -187,16 +188,18 @@ possible, alongside the credential reference and `details.k8s` fields
 register_cluster.py certificate list [--address SUBSTR] [--id SUBSTR]
 register_cluster.py certificate get --id ID
 register_cluster.py certificate create --address HOST [--k8s-port PORT] [--skip-if-exists]
-register_cluster.py certificate update --address HOST [--k8s-port PORT]
 register_cluster.py certificate delete (--id ID | --address HOST [--k8s-port PORT]) [--yes]
 ```
 
 Unlike credentials and cluster registrations, a certificate has no name and
 no caller-chosen ID — its `id` is deterministic, computed from
-`--address`/`--k8s-port` alone (base64 of `"{host}:{port}:host"`). `create`,
-`update`, and `list --address` all key off that same host/port; `delete`
-accepts either the computed `id` directly or `--address`/`--k8s-port` to
-derive it.
+`--address`/`--k8s-port` alone (base64 of `"{host}:{port}:host"`). `create`
+and `list --address` key off that same host/port; `delete` accepts either
+the computed `id` directly or `--address`/`--k8s-port` to derive it.
+
+PPDM's API does not support updating an existing certificate record, so
+there is no `certificate update` command — to rotate a certificate, delete
+the existing record and `create` it again.
 
 **`create`** connects to the cluster's Kubernetes API server at
 `--address`/`--k8s-port` over TLS and extracts the certificate it presents,
@@ -217,12 +220,6 @@ certificate flow to push and accept it:
 register_cluster.py --server ppdm.example.com certificate create \
   --address k8s-api.example.com
 ```
-
-**`update`** re-fetches the certificate from the same Kubernetes API server
-and `PUT`s the refreshed validity window, fingerprint, subject, issuer, and
-`state: "ACCEPTED"` onto the existing PPDM record — useful after the
-cluster's certificate has been rotated. `host`/`port`/`type`/`verify` carry
-over unchanged from the existing record.
 
 **`--skip-if-exists`** (create only): checks whether a certificate for this
 exact `--address`/`--k8s-port` already exists (via its computed `id`)
@@ -265,7 +262,7 @@ described above (including `--address`) **has been tested against a live
 PPDM appliance and confirmed working**, and `certificate create`'s
 Kubernetes-side extraction/parsing (`fetch_certificate`/
 `describe_certificate`) **has been tested against a real Kubernetes API
-server and confirmed working**. Certificate `create`/`update`/`delete`'s
+server and confirmed working**. Certificate `create`/`delete`'s
 actual PPDM-side requests (the POST/GET/PUT/GET flow) and the `list`
 `--address` filter have not been verified against a live PPDM appliance —
 do that, along with any other unverified operation, before relying on them

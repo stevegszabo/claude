@@ -243,41 +243,6 @@ class CertificatesAPITests(unittest.TestCase):
                 self.api.create("192.168.2.102", port=6443)
         self.assertIn("REJECTED", str(ctx.exception))
 
-    def test_update_refreshes_fields_and_puts(self):
-        pem = _make_self_signed_pem(common_name="my-cluster", issuer_common_name="my-ca")
-        expected_id = base64.b64encode(b"192.168.2.102:6443:host").decode()
-        current = {
-            "id": expected_id, "host": "192.168.2.102", "port": 6443, "type": "HOST",
-            "verify": False, "fingerprint": "STALE-FINGERPRINT", "state": "UNKNOWN",
-        }
-        put_response = {"id": expected_id, "state": "ACCEPTED"}
-        self.client.request.side_effect = [current, put_response]
-
-        with patch.object(self.api, "fetch_certificate", return_value=pem) as mock_fetch:
-            result = self.api.update("192.168.2.102", port=6443)
-        mock_fetch.assert_called_once_with("192.168.2.102", port=6443, timeout=10)
-        self.assertEqual(result, put_response)
-
-        calls = self.client.request.call_args_list
-        self.assertEqual(len(calls), 2)
-        self.assertEqual(calls[0].args, ("GET", "/certificates/{}".format(expected_id)))
-
-        put_method, put_path = calls[1].args
-        self.assertEqual((put_method, put_path), ("PUT", "/certificates/{}".format(expected_id)))
-        payload = calls[1].kwargs["json"]
-        self.assertEqual(payload["notValidBefore"], "2024-01-01T00:00:00.000Z")
-        self.assertEqual(payload["notValidAfter"], "2025-01-01T00:00:00.000Z")
-        self.assertEqual(len(payload["fingerprint"]), 64)
-        self.assertNotEqual(payload["fingerprint"], "STALE-FINGERPRINT")
-        self.assertEqual(payload["subjectName"], "CN=my-cluster")
-        self.assertEqual(payload["issuerName"], "CN=my-ca")
-        self.assertEqual(payload["state"], "ACCEPTED")
-        # Carried over unchanged from the GET response.
-        self.assertEqual(payload["host"], "192.168.2.102")
-        self.assertEqual(payload["port"], 6443)
-        self.assertEqual(payload["type"], "HOST")
-        self.assertEqual(payload["verify"], False)
-
 
 if __name__ == "__main__":
     unittest.main()

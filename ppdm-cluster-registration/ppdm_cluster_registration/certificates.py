@@ -77,26 +77,6 @@ class CertificatesAPI:
             )
         return confirmed
 
-    def update(self, address, port=6443, timeout=10):
-        """Refresh a certificate in PPDM: re-fetch it from the cluster's
-        Kubernetes API server and PUT the refreshed fields onto the
-        existing PPDM record.
-        """
-        cert_id = self.compute_id(address, port)
-        pem = self.fetch_certificate(address, port=port, timeout=timeout)
-        info = self.describe_certificate(pem)
-
-        current = self.get(cert_id)
-        payload = dict(current)
-        payload["notValidBefore"] = info["not_valid_before"]
-        payload["notValidAfter"] = info["not_valid_after"]
-        payload["fingerprint"] = info["fingerprint"]
-        payload["subjectName"] = info["subject"]
-        payload["issuerName"] = info["issuer"]
-        payload["state"] = "ACCEPTED"
-
-        return self.client.request("PUT", "/certificates/{}".format(cert_id), json=payload)
-
     def delete(self, id):
         """Delete a certificate by ID."""
         return self.client.request("DELETE", "/certificates/{}".format(id))
@@ -129,12 +109,19 @@ class CertificatesAPI:
         date_format = "%Y-%m-%dT%H:%M:%S.000Z"
         # not_valid_before/not_valid_after are deprecated in favor of the
         # *_utc variants as of cryptography 42, but those don't exist yet in
-        # older installs (e.g. cryptography 41 -- AttributeError). Prefer
-        # the new attribute when present, fall back otherwise; both
-        # represent the same UTC instant, so the formatted output is
-        # identical either way.
-        not_valid_before = getattr(cert, "not_valid_before_utc", cert.not_valid_before)
-        not_valid_after = getattr(cert, "not_valid_after_utc", cert.not_valid_after)
+        # older installs (e.g. cryptography 41 -- AttributeError). hasattr()
+        # only touches the attribute that actually gets used -- unlike
+        # getattr(cert, "..._utc", cert.not_valid_before), whose default
+        # argument is evaluated eagerly and would trip the deprecation
+        # warning on every call even when *_utc is available. Both
+        # attributes represent the same UTC instant, so the formatted
+        # output is identical either way.
+        if hasattr(cert, "not_valid_before_utc"):
+            not_valid_before = cert.not_valid_before_utc
+            not_valid_after = cert.not_valid_after_utc
+        else:
+            not_valid_before = cert.not_valid_before
+            not_valid_after = cert.not_valid_after
         return {
             "not_valid_before": not_valid_before.strftime(date_format),
             "not_valid_after": not_valid_after.strftime(date_format),
