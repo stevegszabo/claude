@@ -5,8 +5,6 @@ import ssl
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 
-from .filters import build_filter
-
 
 class CertificatesAPI:
     """CRUD operations for PPDM cluster certificates.
@@ -23,11 +21,19 @@ class CertificatesAPI:
     def list(self, address=None, id=None):
         """List PPDM certificates, optionally filtered by substring match on
         host (--address) and/or id.
+
+        PPDM's /certificates endpoint does not honor the `filter` query
+        param used by the other resources (confirmed via live testing --
+        it silently returns every certificate regardless of the filter
+        sent), so matching is done client-side here instead.
         """
-        filt = build_filter(None, host=address, id=id)
-        params = {"filter": filt} if filt else None
-        response = self.client.request("GET", "/certificates", params=params)
-        return response["content"] if response else []
+        response = self.client.request("GET", "/certificates")
+        certs = response["content"] if response else []
+        if address:
+            certs = [c for c in certs if address in c.get("host", "")]
+        if id:
+            certs = [c for c in certs if id in c.get("id", "")]
+        return certs
 
     def get(self, id):
         """Fetch a single certificate by ID."""

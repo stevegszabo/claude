@@ -234,8 +234,11 @@ certificates have none.
 (`type eq "KUBERNETES" and name lk "%<name>%"`, PPDM's own filter syntax) —
 the same substring-match convention Dell's own reference scripts use, so
 `--name` doesn't need to be an exact match. Certificates aren't scoped to a
-`type` and have no `name` field; their `list` filter matches substrings of
-`host` (via `--address`) and/or `id` instead.
+`type` and have no `name` field; live testing found that PPDM's
+`/certificates` endpoint doesn't honor the `filter` query param at all (it
+silently returns every certificate regardless), so `certificate list`
+filters by substring match on `host` (via `--address`) and/or `id`
+client-side instead.
 
 ## Development
 
@@ -262,11 +265,14 @@ described above (including `--address`) **has been tested against a live
 PPDM appliance and confirmed working**, and `certificate create`'s
 Kubernetes-side extraction/parsing (`fetch_certificate`/
 `describe_certificate`) **has been tested against a real Kubernetes API
-server and confirmed working**. Certificate `create`/`delete`'s
-actual PPDM-side requests (the POST/GET/PUT/GET flow) and the `list`
-`--address` filter have not been verified against a live PPDM appliance —
-do that, along with any other unverified operation, before relying on them
-in production.
+server and confirmed working**. Live testing also found that PPDM's
+`/certificates` endpoint doesn't honor the `filter` query param, so
+`certificate list` now filters by `--address`/`--id` client-side (see
+Filtering above) — that fix itself still needs to be re-verified live.
+Certificate `create`/`delete`'s actual PPDM-side requests (the
+POST/GET/PUT/GET flow) have not been verified against a live PPDM
+appliance either — do that, along with any other unverified operation,
+before relying on them in production.
 
 ## Project layout
 

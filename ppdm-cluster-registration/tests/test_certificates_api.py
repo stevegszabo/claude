@@ -93,25 +93,31 @@ class CertificatesAPITests(unittest.TestCase):
         self.client = MagicMock(spec=PPDMClient)
         self.api = CertificatesAPI(self.client)
 
-    def test_list_with_no_filters_omits_params_filter(self):
+    def test_list_with_no_filters_returns_all_certs(self):
         self.client.request.return_value = {"content": [{"id": "cert1"}]}
         result = self.api.list()
         self.assertEqual(result, [{"id": "cert1"}])
-        method, path = self.client.request.call_args.args
-        self.assertEqual((method, path), ("GET", "/certificates"))
-        self.assertIsNone(self.client.request.call_args.kwargs["params"])
+        self.client.request.assert_called_once_with("GET", "/certificates")
 
-    def test_list_builds_address_filter(self):
-        self.client.request.return_value = {"content": []}
-        self.api.list(address="192.168.2.102")
-        filt = self.client.request.call_args.kwargs["params"]["filter"]
-        self.assertEqual(filt, 'host lk "%192.168.2.102%"')
+    def test_list_filters_by_address_substring_client_side(self):
+        self.client.request.return_value = {
+            "content": [
+                {"id": "cert1", "host": "192.168.2.102"},
+                {"id": "cert2", "host": "192.168.2.200"},
+            ]
+        }
+        result = self.api.list(address="192.168.2.102")
+        self.assertEqual(result, [{"id": "cert1", "host": "192.168.2.102"}])
 
-    def test_list_builds_id_filter(self):
-        self.client.request.return_value = {"content": []}
-        self.api.list(id="cert1")
-        filt = self.client.request.call_args.kwargs["params"]["filter"]
-        self.assertEqual(filt, 'id lk "%cert1%"')
+    def test_list_filters_by_id_substring_client_side(self):
+        self.client.request.return_value = {
+            "content": [
+                {"id": "cert1", "host": "a"},
+                {"id": "cert2", "host": "b"},
+            ]
+        }
+        result = self.api.list(id="cert1")
+        self.assertEqual(result, [{"id": "cert1", "host": "a"}])
 
     def test_list_returns_empty_list_for_empty_response(self):
         self.client.request.return_value = None
